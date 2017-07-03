@@ -1,0 +1,24 @@
+-- Prevent output while loading file
+\set QUIET 1
+
+\pset null '[NULL]'
+
+-- Errors in transaction can be corrected without re-playing the whole transaction
+\set ON_ERROR_ROLLBACK interactive
+
+-- Use expanded table format when needed
+\x auto
+
+-- Use a separate history file per-database
+\set HISTFILE ~/.psql_history- :DBNAME
+
+-- If a command is run more than once in a row, only store it once in the
+-- history.
+\set HISTCONTROL ignoredups
+
+-- Always auto-complete in lower-case
+\set COMP_KEYWORD_CASE lower
+
+\timing
+
+\unset QUIET
