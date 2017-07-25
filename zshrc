@@ -92,6 +92,7 @@ stty start undef stop undef
 
 if [ $(tty) = "/dev/tty1" ]; then
   startx
+  xrandr --output DP1 --auto --above eDP1
 fi
 
-xrandr --output DP1 --auto --above eDP1
+eval $(keychain --eval --agents ssh -Q --quiet id_rsa)
