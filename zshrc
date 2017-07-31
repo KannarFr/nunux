@@ -81,6 +81,9 @@ export PATH=$PATH:$HOME/.config/composer/vendor/bin
 # node global
 export PATH=$PATH:$HOME/.npm-global/bin
 
+# rubygems
+export PATH="$(ruby -e 'print Gem.user_dir')/bin:$PATH"
+
 alias zshconfig="vim ~/.zshrc"
 alias ohmyzsh="vim ~/.oh-my-zsh"
 
