@@ -1,3 +1,6 @@
 [user]
 	email = alexandre.duval@insa-rouen.fr
 	name = Alexandre DUVAL
+
+[url "git+ssh://git@gitlab.clever-cloud.com/clever-cloud/"]
+	insteadOf = clever:
