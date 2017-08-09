@@ -86,6 +86,7 @@ export PATH="$(ruby -e 'print Gem.user_dir')/bin:$PATH"
 
 alias zshconfig="vim ~/.zshrc"
 alias ohmyzsh="vim ~/.oh-my-zsh"
+alias yolo="i3lock"
 
 # autojump conf
 [[ -s $HOME/.autojump/etc/profile.d/autojump.sh ]] && source $HOME/.autojump/etc/profile.d/autojump.sh
@@ -95,6 +96,9 @@ stty start undef stop undef
 
 if [ $(tty) = "/dev/tty1" ]; then
   startx
+  setxkbmap fr
+  xrandr --output DP1 --auto --above eDP1
+  nitrogen --restore
 fi
 
 eval $(keychain --eval --agents ssh -Q --quiet id_rsa)
