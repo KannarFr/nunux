@@ -86,7 +86,7 @@ export PATH="$(ruby -e 'print Gem.user_dir')/bin:$PATH"
 
 alias zshconfig="vim ~/.zshrc"
 alias ohmyzsh="vim ~/.oh-my-zsh"
-alias yolo="i3lock"
+alias yolo="i3lock -i ~/Pictures/wallpapers/current.jpg -p default -d -n"
 
 # autojump conf
 [[ -s $HOME/.autojump/etc/profile.d/autojump.sh ]] && source $HOME/.autojump/etc/profile.d/autojump.sh
@@ -98,7 +98,7 @@ if [ $(tty) = "/dev/tty1" ]; then
   startx
   setxkbmap fr
   xrandr --output DP1 --auto --above eDP1
-  nitrogen --restore
+  nitrogen ~/Pictures/wallpapers/current.jpg
 fi
 
 eval $(keychain --eval --agents ssh -Q --quiet id_rsa)
