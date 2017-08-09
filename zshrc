@@ -84,9 +84,12 @@ export PATH=$PATH:$HOME/.npm-global/bin
 # rubygems
 export PATH="$(ruby -e 'print Gem.user_dir')/bin:$PATH"
 
+# config
 alias zshconfig="vim ~/.zshrc"
 alias ohmyzsh="vim ~/.oh-my-zsh"
-alias yolo="i3lock -i ~/Pictures/wallpapers/current.jpg -p default -d -n"
+
+# i3 lock screen
+alias yolo="i3lock"
 
 # autojump conf
 [[ -s $HOME/.autojump/etc/profile.d/autojump.sh ]] && source $HOME/.autojump/etc/profile.d/autojump.sh
