@@ -87,6 +87,7 @@ export PATH="$(ruby -e 'print Gem.user_dir')/bin:$PATH"
 # config
 alias zshconfig="vim ~/.zshrc"
 alias ohmyzsh="vim ~/.oh-my-zsh"
+alias trans="~/app/trans"
 
 # i3 lock screen
 alias yolo="i3lock"
@@ -99,9 +100,9 @@ stty start undef stop undef
 
 if [ $(tty) = "/dev/tty1" ]; then
   startx
-  setxkbmap fr
-  xrandr --output DP1 --auto --above eDP1
-  nitrogen ~/Pictures/wallpapers/current.jpg
 fi
 
+setxkbmap fr
+#xrandr --output DP1 --auto --above eDP1
+nitrogen ~/Pictures/wallpapers/current.jpg
 eval $(keychain --eval --agents ssh -Q --quiet id_rsa)
