@@ -104,5 +104,5 @@ fi
 
 setxkbmap fr
 #xrandr --output DP1 --auto --above eDP1
-nitrogen ~/Pictures/wallpapers/current.jpg
+#nitrogen ~/Pictures/wallpapers/current.jpg
 eval $(keychain --eval --agents ssh -Q --quiet id_rsa)
