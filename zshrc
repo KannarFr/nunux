@@ -95,6 +95,9 @@ alias trans="~/app/trans"
 # i3 lock screen
 alias yolo="i3lock"
 
+# sbt fix for ncurses regression
+export TERM=xterm-color
+
 # autojump conf
 [[ -s $HOME/.autojump/etc/profile.d/autojump.sh ]] && source $HOME/.autojump/etc/profile.d/autojump.sh
 autoload -U compinit && compinit -u
