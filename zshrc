@@ -84,6 +84,9 @@ export PATH=$PATH:$HOME/.npm-global/bin
 # rubygems
 export PATH="$(ruby -e 'print Gem.user_dir')/bin:$PATH"
 
+# rust
+source $HOME/.cargo/env
+
 # config
 alias zshconfig="vim ~/.zshrc"
 alias ohmyzsh="vim ~/.oh-my-zsh"
