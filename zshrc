@@ -104,8 +104,6 @@ autoload -U compinit && compinit -u
 
 stty start undef stop undef
 
-if [ $(tty) = "/dev/tty1" ]; then
-  startx
-fi
+setxkbmap fr
 
 eval $(keychain --eval --agents ssh -Q --quiet id_rsa)
