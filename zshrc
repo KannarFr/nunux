@@ -81,6 +81,9 @@ export PATH=$PATH:$HOME/.config/composer/vendor/bin
 # node global
 export PATH=$PATH:$HOME/.npm-global/bin
 
+# nvm
+source /usr/share/nvm/init-nvm.sh
+
 # rubygems
 export PATH="$(ruby -e 'print Gem.user_dir')/bin:$PATH"
 
