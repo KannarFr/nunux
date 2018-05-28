@@ -1,6 +1,7 @@
 [user]
-	email = alexandre.duval@insa-rouen.fr
+	email = alexanduval@wanadoo.fr
 	name = Alexandre DUVAL
+	signingkey = 522A577D725FCB9F3CB24365A828894B7E4A851F
 
-[url "git+ssh://git@gitlab.clever-cloud.com/clever-cloud/"]
+[url "git+ssh://git@gitlab.corp.clever-cloud.com/clever-cloud/"]
 	insteadOf = clever:
