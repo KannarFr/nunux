@@ -5,3 +5,12 @@
 
 [url "git+ssh://git@gitlab.corp.clever-cloud.com/clever-cloud/"]
 	insteadOf = clever:
+
+[url "git+ssh://git@github.com/"]
+	insteadOf = github:
+
+[commit]
+	gpgsign = true
+
+[gpg]
+	program = gpg
