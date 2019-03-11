@@ -1,4 +1,4 @@
-ZSH_THEME="aussiegeek"
+ZSH_THEME="kafeitu"
 
 plugins=(git archlinux autojump github history yarn npm sbt)
 
@@ -10,4 +10,15 @@ autoload -U compinit && compinit -u
 
 stty start undef stop undef
 
-eval $(keychain --eval --agents ssh -Q --quiet id_rsa)
+#eval $(keychain --eval --agents ssh -Q --quiet id_rsa)
+
+# Setup GPG env
+export GPG_TTY=$(tty)
+unset SSH_AGENT_PID
+if [ "${gnupg_SSH_AUTH_SOCK_by:-0}" -ne $$ ]; then
+    export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/gnupg/S.gpg-agent.ssh"
+fi
+gpg-connect-agent updatestartuptty /bye >/dev/null
+
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
