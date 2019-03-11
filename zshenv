@@ -5,4 +5,3 @@ export PATH=$PATH:$HOME/.npm-global/bin
 export PATH=$PATH:"$(ruby -e 'print Gem.user_dir')/bin"
 export PATH=$PATH:$HOME/.cargo/bin
 export SSH_KEY_PATH="~/.ssh/rsa_id"
-export ZSH=/usr/share/oh-my-zsh
