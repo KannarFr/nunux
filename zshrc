@@ -6,6 +6,7 @@ compinit -u
 
 stty start undef stop undef
 
+export GPG_TTY=$(tty)
 # Setup GPG env
 unset SSH_AGENT_PID
 if [ "${gnupg_SSH_AUTH_SOCK_by:-0}" -ne $$ ]; then
@@ -17,6 +18,14 @@ gpg-connect-agent updatestartuptty /bye >/dev/null
 
 # Add RVM to PATH for scripting. Make sure this is the last PATH variable change.
 export PATH="$PATH:$HOME/.rvm/bin"
+
+# Basic settings
+HISTFILE=~/.histfile
+HISTSIZE=16192
+SAVEHIST=16192
+export EDITOR=/usr/bin/vim
+export PAGER=/usr/bin/less
+umask 022
 
 # Completions
 
@@ -43,7 +52,6 @@ zstyle ':completion:*' list-prompt %SAt %p: Hit TAB for more %s
 rm -f ~/.zcompdump
 
 # Enable a few things
-compinit
 colors
 
 setopt autocd appendhistory extendedglob nonomatch promptsubst notify
