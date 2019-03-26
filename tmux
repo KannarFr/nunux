@@ -51,7 +51,7 @@ set -g status-left '#[fg=red]#H#[fg=green]:#[fg=blue]#S #[fg=green] [#[default]'
 set -g status-right '#[fg=green]][ (#T) #[fg=blue]%Y-%m-%d #[fg=black]%H:%M#[default]'
 
 set -g status-right-length 100
-set -g history-limit 65536
+set -g history-limit 165536
 
 # Bindings
 bind n next-window
