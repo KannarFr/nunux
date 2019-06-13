@@ -66,5 +66,3 @@ bind-key C-m set-window-option synchronize-panes
 unbind-key C-n
 # Log output to a text file on demand
 bind P pipe-pane -o "cat >>~/tmux-#W.log" \; display "Toggled logging to ~/tmux-#W.log"
-
-new-session -s default
