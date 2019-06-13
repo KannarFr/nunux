@@ -55,6 +55,16 @@ rm -f ~/.zcompdump
 colors
 
 setopt autocd appendhistory extendedglob nonomatch promptsubst notify
+# Add commands to history as they are entered, don't wait for shell to exit
+setopt INC_APPEND_HISTORY
+# Also remember command start time and duration
+setopt EXTENDED_HISTORY
+# Do not keep duplicate commands in history
+setopt HIST_IGNORE_ALL_DUPS
+# Do not remember commands that start with a whitespace
+setopt HIST_IGNORE_SPACE
+# Correct spelling of all arguments in the command line
+setopt CORRECT_ALL
 
 # Aliases
 alias gapa='git add -p'
