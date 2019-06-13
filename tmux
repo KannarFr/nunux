@@ -11,21 +11,22 @@ set -g @plugin 'tmux-plugins/tmux-resurrect'
 # Initialize TMUX plugin manager (keep this line at the very bottom of tmux.conf)
 run '~/.tmux/plugins/tpm/tpm'
 
-set-option -ga terminal-overrides ",xterm-256color:Tc"
+set -g default-command "${SHELL}"
 set -g base-index 1
+set-option -ga terminal-overrides ",xterm-256color:Tc"
 set-option -sg escape-time 10
-set-option -g status-keys vi
+set-option -g status-keys emacs
 set-option -g visual-bell off
 set-option -g set-titles on
 set-option -g set-titles-string '#H:#S.#I.#P #W #T' # window number,program name,active (or not)
 set-option -g status-justify left
-set-option -g status-fg green
+set-option -g status-style fg=green
 set-option -g status-left-length 40
-set-option -g pane-active-border-fg black
-set-option -g pane-active-border-bg yellow
-set-option -g pane-border-fg green
-set-option -g message-fg yellow
-set-window-option -g mode-keys vi
+set-option -g status-position top
+set-option -g pane-active-border-style bg=yellow,fg=black
+set-option -g pane-border-style fg=green
+set-option -g message-style fg=yellow
+#set-window-option -g mode-keys emacs
 
 ## Start the background colors for interface
 ### Here is the dark theme
@@ -34,11 +35,11 @@ set-window-option -g mode-keys vi
 #set-option -g message-bg black
 #setw -g window-status-bg black
 ### Here is the light theme
-set-option -g pane-border-bg white
-set-option -g status-bg white
-setw -g window-status-bg white
-set-option -g message-bg white
-setw -g window-status-current-fg green
+set-option -g pane-border-style bg=white
+set-option -g status-style bg=white
+set-option -g message-style bg=white
+setw -g window-status-style bg=white
+setw -g window-status-current-style fg=green
 
 ## Dark theme
 #set -g status-left '#[fg=red]#H#[fg=green]:#[fg=white]#S #[fg=green]][#[default]'
