@@ -95,6 +95,9 @@ precmd(){
 # No beep ever
 unsetopt beep
 
+# Do not accidentally overwrite files with >
+setopt noclobber
+
 # Prompts
 PROMPT='%M %{${fg[blue]}%}%~ ${vcs_info_msg_0_}%# %{${reset_color}%}'
 RPROMPT="%{${fg[blue]}%}[%{${fg[red]}%}%?%{${fg[blue]}%}][%{${fg[red]}%}%*%{${fg[blue]}%} - %{${fg[red]}%}%D{%d/%m/%Y}%{${fg[blue]}%}]%{${reset_color}%}"
