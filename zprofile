@@ -5,3 +5,5 @@ fi
 xhost +
 
 feh --bg-scale /home/kannar/Pictures/V4.png
+
+export PATH="$HOME/.cargo/bin:$PATH"
