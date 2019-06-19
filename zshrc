@@ -14,8 +14,6 @@ if [ "${gnupg_SSH_AUTH_SOCK_by:-0}" -ne $$ ]; then
 fi
 gpg-connect-agent updatestartuptty /bye >/dev/null
 
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
-
 # Add RVM to PATH for scripting. Make sure this is the last PATH variable change.
 export PATH="$PATH:$HOME/.rvm/bin"
 
@@ -107,3 +105,29 @@ if [ "$EUID" = "0" ] || [ "$USER" = "root" ] ; then
 else
     PROMPT="%{${fg_bold[green]}%}%n@${PROMPT}"
 fi
+
+# Bindkeys
+typeset -g -A key
+bindkey '^I' complete-word # complete on tab, leave expansion to _expand
+#WORDCHARS=${WORDCHARS//[&=\/;!#%{]}
+#WORDCHARS=${WORDCHARS//[&=\  ;!#%{]}
+WORDCHARS='*?_-.[]~=&;!#$%^(){}<>'
+
+#bindkey -v
+bindkey -e
+bindkey "\e[1~" beginning-of-line # Home
+bindkey "\e[4~" end-of-line # End
+bindkey "\e[5~" beginning-of-history # PageUp
+bindkey "\e[6~" end-of-history # PageDown
+bindkey "\e[2~" quoted-insert # Ins
+bindkey "\e[3~" delete-char # Del
+bindkey "\e[5C" forward-word
+bindkey "\eOc" emacs-forward-word
+bindkey "\e[5D" backward-word
+bindkey "\eOd" emacs-backward-word
+bindkey "\e\e[C" forward-word
+bindkey "\e\e[D" backward-word
+bindkey "\e[Z" reverse-menu-complete # Shift+Tab
+
+# fzf
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
