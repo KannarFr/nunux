@@ -2,6 +2,13 @@
 set -g @plugin 'tmux-plugins/tpm'
 set -g @plugin 'tmux-plugins/tmux-sensible'
 set -g @plugin 'tmux-plugins/tmux-resurrect'
+set -g @plugin 'tmux-plugins/tmux-continuum'
+
+# enable tmux session autosaving
+set -g @continuum-restore 'on'
+
+# auto rerun program after tmux ressurect
+set -g @resurrect-processes 'ssh psql'
 
 # Other examples:
 # set -g @plugin 'github_username/plugin_name'
