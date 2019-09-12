@@ -131,3 +131,9 @@ bindkey "\e[Z" reverse-menu-complete # Shift+Tab
 
 # fzf
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
+echo "prefix + $"
+echo "prefix + s"
+echo "prefix + g"
+echo "prefix + :new"
+echo "prefix + space"
