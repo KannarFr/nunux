@@ -65,6 +65,7 @@ setopt HIST_IGNORE_SPACE
 setopt CORRECT_ALL
 
 # Aliases
+alias cat='bat'
 alias gapa='git add -p'
 alias gc='git commit'
 alias gss='git status'
