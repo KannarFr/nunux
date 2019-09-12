@@ -1,5 +1,5 @@
-# Set the theme to "TwoDark"
---theme="TwoDark"
+# Set the theme
+--theme="Monokai Extended Light"
 
 # Show line numbers, Git modifications and file header (but no grid)
 --style="numbers,changes,header"
