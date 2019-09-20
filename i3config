@@ -160,7 +160,7 @@ bindsym Shift+XF86AudioRaiseVolume exec amixer -i 5
 bindsym Shift+XF86AudioLowerVolume exec amixer -d 5
 bindsym XF86AudioMute exec pamixer -t
 
-bindsym $mod+l exec i3lock -e -d -c 000000 -f
+bindsym $mod+l exec i3lock -e -d -t -u -c 000000 -f -i ~/Pictures/windows_failure.png -p win
 
 bindsym Print exec gnome-screenshot -i
 
