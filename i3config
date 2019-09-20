@@ -34,6 +34,9 @@ floating_modifier $mod
 # start a terminal
 bindsym $mod+Shift+Enter exec germinal
 
+# start gpaste-client ui
+bindsym $mod+c exec "gpaste-client ui"
+
 # kill focused window
 bindsym $mod+Shift+a kill
 
@@ -158,8 +161,6 @@ bindsym Shift+XF86AudioLowerVolume exec amixer -d 5
 bindsym XF86AudioMute exec pamixer -t
 
 bindsym $mod+l exec i3lock -e -d -c 000000 -f
-
-bindsym $mod+c exec firefox
 
 bindsym Print exec gnome-screenshot -i
 
