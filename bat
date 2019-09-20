@@ -1,8 +1,8 @@
 # Set the theme
---theme="Monokai Extended Light"
+--theme="GitHub"
 
 # Show line numbers, Git modifications and file header (but no grid)
---style="numbers,changes,header"
+--style="numbers,changes,header,grid"
 
 # Use italic text on the terminal (not supported on all terminals)
 --italic-text=always
