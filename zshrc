@@ -6,6 +6,9 @@ compinit -u
 
 stty start undef stop undef
 
+# autosuggest
+source ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
+
 # Setup GPG env
 unset SSH_AGENT_PID
 if [ "${gnupg_SSH_AUTH_SOCK_by:-0}" -ne $$ ]; then
