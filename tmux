@@ -22,7 +22,7 @@ set -g default-command "${SHELL}"
 set -g base-index 1
 set-option -ga terminal-overrides ",xterm-256color:Tc"
 set-option -sg escape-time 10
-set-option -g status-keys emacs
+set-option -g status-keys vi
 set-option -g visual-bell off
 set-option -g set-titles on
 set-option -g set-titles-string '#H:#S.#I.#P #W #T' # window number,program name,active (or not)
