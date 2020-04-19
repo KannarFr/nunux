@@ -1,7 +1,7 @@
 [user]
 	email = kannarfr@gmail.com
 	name = Alexandre DUVAL - @kannarfr
-	signingkey = 522A577D725FCB9F3CB24365A828894B7E4A851F
+	signingkey = E60D6264BE6C7938618582EC1F8F6C8C34CA75CD
 
 [url "git+ssh://git@gitlab.corp.clever-cloud.com/clever-cloud/"]
 	insteadOf = clever:
