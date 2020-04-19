@@ -78,9 +78,9 @@ alias grep='grep --colour=auto'
 alias la='ls -A'
 alias l='ls -CF'
 alias ll='ls -alFh'
-alias slack="flatpak run com.slack.Slack &"
-alias spotify="flatpak run com.spotify.Client &"
-alias zoom="flatpak run us.zoom.Zoom &"
+#alias slack="flatpak run com.slack.Slack &"
+#alias spotify="flatpak run com.spotify.Client &"
+#alias zoom="flatpak run us.zoom.Zoom &"
 
 # VCS info
 zstyle ':vcs_info:*' actionformats '%F{5}(%f%s%F{5})%F{3}-%F{5}[%F{2}%b%F{3}|%F{1}%a%F{5}]%f '
