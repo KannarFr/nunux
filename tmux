@@ -4,11 +4,16 @@ set -g @plugin 'tmux-plugins/tmux-sensible'
 set -g @plugin 'tmux-plugins/tmux-resurrect'
 set -g @plugin 'tmux-plugins/tmux-continuum'
 
+#set -g status off
+
 # enable tmux session autosaving
 set -g @continuum-restore 'on'
+set -g @continuum-boot 'on'
+set -g @continuum-save-interval '2'
 
 # auto rerun program after tmux ressurect
 set -g @resurrect-processes 'ssh psql'
+set -g @resurrect-capture-pane-contents 'on'
 
 # Other examples:
 # set -g @plugin 'github_username/plugin_name'
@@ -49,9 +54,9 @@ setw -g window-status-style bg=white
 setw -g window-status-current-style fg=green
 
 ## Dark theme
-#set -g status-left '#[fg=red]#H#[fg=green]:#[fg=white]#S #[fg=green]][#[default]'
+#set -g status-left '#[fg=red]#H#[fg=green]:#[fg=white]#S #[fg=green] [#[default]'
 ## Light theme
-set -g status-left '#[fg=red]#H#[fg=green]:#[fg=blue]#S #[fg=green] [#[default]'
+set -g status-left '#[fg=red]#H#[fg=green]:#[fg=blue]#S #[fg=green] continuum: #{continuum_status} [#[default]'
 
 ## Dark theme
 #set -g status-right '#[fg=green]][ (#T) #[fg=blue]%Y-%m-%d #[fg=white]%H:%M#[default]'
