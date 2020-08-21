@@ -12,7 +12,7 @@ set -g @continuum-boot 'on'
 set -g @continuum-save-interval '2'
 
 # auto rerun program after tmux ressurect
-set -g @resurrect-processes 'ssh psql'
+#set -g @resurrect-processes 'ssh psql'
 set -g @resurrect-capture-pane-contents 'on'
 
 # Other examples:
@@ -32,12 +32,12 @@ set-option -g visual-bell off
 set-option -g set-titles on
 set-option -g set-titles-string '#H:#S.#I.#P #W #T' # window number,program name,active (or not)
 set-option -g status-justify left
-set-option -g status-style fg=green
+set-option -g status-style fg=black
 set-option -g status-left-length 40
 set-option -g status-position top
 set-option -g pane-active-border-style bg=yellow,fg=black
-set-option -g pane-border-style fg=green
-set-option -g message-style fg=yellow
+set-option -g pane-border-style fg=black
+set-option -g message-style fg=black
 #set-window-option -g mode-keys emacs
 
 ## Start the background colors for interface
@@ -51,17 +51,17 @@ set-option -g pane-border-style bg=white
 set-option -g status-style bg=white
 set-option -g message-style bg=white
 setw -g window-status-style bg=white
-setw -g window-status-current-style fg=green
+setw -g window-status-current-style fg=black
 
 ## Dark theme
 #set -g status-left '#[fg=red]#H#[fg=green]:#[fg=white]#S #[fg=green] [#[default]'
 ## Light theme
-set -g status-left '#[fg=red]#H#[fg=green]:#[fg=blue]#S #[fg=green] continuum: #{continuum_status} [#[default]'
+set -g status-left '#[fg=red]#H#[fg=green]:#[fg=blue]#S #[fg=green] [#[default]'
 
 ## Dark theme
 #set -g status-right '#[fg=green]][ (#T) #[fg=blue]%Y-%m-%d #[fg=white]%H:%M#[default]'
 ## Light theme
-set -g status-right '#[fg=green]][ (#T) #[fg=blue]%Y-%m-%d #[fg=black]%H:%M#[default]'
+set -g status-right '#[fg=black]][ (#T) #[fg=blue]%Y-%m-%d #[fg=black]%H:%M#[default]'
 
 set -g status-right-length 100
 set -g history-limit 165536
