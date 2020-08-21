@@ -143,12 +143,12 @@ export PATH=$PATH:"$(ruby -e 'print Gem.user_dir')/bin"
 export PATH=$PATH:$HOME/.cargo/bin
 export SSH_KEY_PATH="~/.ssh/rsa_id"
 
-echo "prefix + $"
-echo "prefix + s"
-echo "prefix + g"
-echo "prefix + :new"
-echo "prefix + space"
-echo "mod + c, gpaste client"
+echo "prefix + $ -> name session"
+echo "prefix + s -> list sessions"
+echo "prefix + g -> show sessions/windows/panes tree"
+echo "prefix + :new -> creates new session"
+echo "prefix + space -> switch layout"
+echo "mod + c -> gpaste client"
 
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
