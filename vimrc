@@ -23,7 +23,7 @@ set noshowmode
 set rtp+=~/.vim/bundle/Vundle.vim
 
 " Give more space for displaying messages.
-set cmdheight=2
+set cmdheight=3
 
 " Having longer updatetime (default is 4000 ms = 4 s) leads to noticeable
 " delays and poor user experience.
@@ -109,12 +109,6 @@ vnoremap J :m '>+1<CR>gv=gv
 vnoremap K :m '<-2<CR>gv=gv
 vnoremap X "_d
 
-" vim TODO
-nmap <Leader>tu <Plugin>BujoChecknormal
-nmap <Leader>th <Plugin>BujoAddnormal
-let g:bujo#todo_file_path = $HOME . "/.cache/bujo"
-
-" Vim with me
 nnoremap <leader>vwm :colorscheme gruvbox<bar>:set background=dark<CR>
 nmap <leader>vtm :highlight Pmenu ctermbg=gray guibg=gray
 
@@ -135,11 +129,6 @@ nmap <silent> <leader>gp <Plugin>(coc-diagnostic-prev-error)
 nmap <silent> <leader>gn <Plugin>(coc-diagnostic-next-error)
 nnoremap <leader>cr :CocRestart
 
-" Sweet Sweet FuGITive
-nmap <leader>gh :diffget //3<CR>
-nmap <leader>gu :diffget //2<CR>
-nmap <leader>gs :G<CR>
-
 fun! TrimWhitespace()
     let l:save = winsaveview()
     keeppatterns %s/\s\+$//e
@@ -148,11 +137,6 @@ endfun
 
 " YES
 com! W w
-
-augroup highlight_yank
-    autocmd!
-    autocmd TextYankPost * silent! lua require'vim.highlight'.on_yank()
-augroup end
 
 augroup kannar
     autocmd!
