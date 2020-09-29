@@ -149,6 +149,11 @@ echo "prefix + g -> show sessions/windows/panes tree"
 echo "prefix + :new -> creates new session"
 echo "prefix + space -> switch layout"
 echo "mod + c -> gpaste client"
+echo ""
+echo "dust"
+echo "sd"
+echo "fd"
+echo ""
 
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
