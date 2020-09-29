@@ -3,6 +3,12 @@
 	name = Alexandre DUVAL - @kannarfr
 	signingkey = E60D6264BE6C7938618582EC1F8F6C8C34CA75CD
 
+[color]
+    ui = auto
+[diff]
+    renames = copy
+    renameLimit = 16536
+
 [url "git+ssh://git@gitlab.corp.clever-cloud.com/clever-cloud/"]
 	insteadOf = clever:
 
@@ -17,5 +23,27 @@
 
 [alias]
 	co-pr = !sh -c 'git fetch origin pull/$1/head:pr/$1 && git checkout pr/$1' -
+
 [pull]
 	rebase = true
+
+[push]
+    default = simple
+
+[gitreview]
+    username = KannarFR
+
+[transfer]
+    fsckobjects = true
+
+[fetch]
+    fsckobjects = true
+
+[receive]
+    fsckObjects = true
+
+[log]
+	mailmap = true
+
+[help]
+	autoCorrect = 3
