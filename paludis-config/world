@@ -29,7 +29,6 @@ dev-libs/gnutls
 dev-libs/protobuf-c
 dev-libs/pulsar-client-cpp
 dev-node/yarn
-dev-php/composer
 dev-ruby/bundler
 dev-rust/ripgrep
 dev-scala/sbt
@@ -93,3 +92,8 @@ x11-apps/xinit
 x11-apps/xterm
 x11-plugins/i3blocks
 x11-wm/i3
+net-misc/mtr
+x11-dri/mesa
+net-dns/dog
+repository/lmi
+x11-apps/flameshot
