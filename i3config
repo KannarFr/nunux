@@ -162,7 +162,7 @@ bindsym XF86AudioMute exec pamixer -t
 
 bindsym $mod+l exec i3lock -e -d -t -u -c 000000 -f -i ~/Pictures/windows_failure.png -p win
 
-bindsym Print exec gnome-screenshot -i
+bindsym Print exec flameshot gui
 
 # Start i3bar to display a workspace bar (plus the system information i3status
 # finds out, if available)
