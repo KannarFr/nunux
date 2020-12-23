@@ -66,7 +66,6 @@ sys-apps/bat
 sys-apps/brightnessctl
 sys-apps/dust
 sys-apps/fd
-sys-apps/flatpak
 sys-apps/gptfdisk
 sys-apps/iproute2
 sys-apps/less
@@ -74,8 +73,6 @@ sys-apps/lm_sensors
 sys-apps/systemd
 sys-apps/usbutils
 sys-apps/vector
-sys-apps/xdg-desktop-portal
-sys-apps/xdg-desktop-portal-gtk
 sys-apps/zram-generator
 sys-boot/dracut
 sys-boot/efibootmgr
@@ -97,3 +94,12 @@ x11-dri/mesa
 net-dns/dog
 repository/lmi
 x11-apps/flameshot
+dev-lang/lua
+dev-libs/openssl
+dev-lang/perl
+sys-libs/glibc
+dev-python/setuptools
+net-misc/curl
+sys-devel/cmake
+gnome-bindings/pygobject
+sys-apps/kbd
