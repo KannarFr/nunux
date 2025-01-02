@@ -1,8 +1,25 @@
-autoload -Uz compinit colors vcs_info
 
-# autojump conf
-[[ -s /home/kannar/.autojump/etc/profile.d/autojump.sh ]] && source /home/kannar/.autojump/etc/profile.d/autojump.sh
+autoload -Uz compinit colors vcs_info
 compinit -u
+
+# vcs_info
+precmd_vcs_info() { vcs_info }
+precmd_functions+=(precmd_vcs_info)
+zstyle ':vcs_info:*' actionformats '%F{5}(%f%s%F{5})%F{3}-%F{5}[%F{2}%b%F{3}|%F{1}%a%F{5}]%f '
+zstyle ':vcs_info:*' formats '%F{5}(%f%s%F{5})%F{3}-%F{5}[%F{2}%b%F{5}]%f '
+zstyle ':vcs_info:(sv[nk]|bzr):*' branchformat '%b%F{1}:%F{3}%r'
+zstyle ':vcs_info:*' enable git hg bzr svn
+
+## Reload vcs_info stuff on precmd and ensure gpg is running
+precmd(){
+    vcs_info
+    [[ $(tty) = /dev/pts/* ]] && print -Pn "\e]0;%n@%M:%~\a"
+}
+
+# z conf
+[[ -r "/usr/share/z/z.sh" ]] && source /usr/share/z/z.sh
+
+source /etc/profile
 
 stty start undef stop undef
 
@@ -68,6 +85,7 @@ setopt HIST_IGNORE_SPACE
 setopt CORRECT_ALL
 
 # Aliases
+alias j='z'
 alias cat='bat'
 alias gapa='git add -p'
 alias gc='git commit'
@@ -78,21 +96,6 @@ alias grep='grep --colour=auto'
 alias la='ls -A'
 alias l='ls -CF'
 alias ll='ls -alFh'
-#alias slack="flatpak run com.slack.Slack &"
-#alias spotify="flatpak run com.spotify.Client &"
-#alias zoom="flatpak run us.zoom.Zoom &"
-
-# VCS info
-zstyle ':vcs_info:*' actionformats '%F{5}(%f%s%F{5})%F{3}-%F{5}[%F{2}%b%F{3}|%F{1}%a%F{5}]%f '
-zstyle ':vcs_info:*' formats '%F{5}(%f%s%F{5})%F{3}-%F{5}[%F{2}%b%F{5}]%f '
-zstyle ':vcs_info:(sv[nk]|bzr):*' branchformat '%b%F{1}:%F{3}%r'
-zstyle ':vcs_info:*' enable git hg bzr svn
-
-## Reload vcs_info stuff on precmd and ensure gpg is running
-precmd(){
-    vcs_info
-    [[ $(tty) = /dev/pts/* ]] && print -Pn "\e]0;%n@%M:%~\a"
-}
 
 # No beep ever
 unsetopt beep
@@ -134,7 +137,8 @@ bindkey "\e\e[D" backward-word
 bindkey "\e[Z" reverse-menu-complete # Shift+Tab
 
 # fzf
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+#[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+source <(fzf --zsh)
 
 export BAT_CONFIG_PATH=$HOME/.bat.conf
 export PATH=$PATH:$HOME/.config/composer/vendor/bin
@@ -143,20 +147,12 @@ export PATH=$PATH:$HOME/.npm-global/bin
 export PATH=$PATH:$HOME/.cargo/bin
 export SSH_KEY_PATH="~/.ssh/rsa_id"
 
-echo "prefix + $ -> name session"
-echo "prefix + s -> list sessions"
-echo "prefix + g -> show sessions/windows/panes tree"
-echo "prefix + :new -> creates new session"
-echo "prefix + space -> switch layout"
-echo "mod + c -> gpaste client"
-echo ""
-echo "dust"
-echo "sd"
-echo "fd"
-echo ""
-
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
 export NPM_CONFIG_PREFIX="$HOME/.npm-global"
+export PATH=${PATH}:${HOME}/.pulsarctl/plugins
+
+eval "$(starship init zsh)"
+eval "$(direnv hook zsh)"
