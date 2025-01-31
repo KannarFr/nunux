@@ -96,6 +96,7 @@ alias grep='grep --colour=auto'
 alias la='ls -A'
 alias l='ls -CF'
 alias ll='ls -alFh'
+alias mtmux='/home/kannar/nunux/mtmux'
 
 # No beep ever
 unsetopt beep
