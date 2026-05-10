@@ -1,80 +1,55 @@
 #!/usr/bin/env bash
 # One-shot waybar custom/cpu module: emits a single JSON line and exits.
-# State (last /proc/stat counters) is persisted in /tmp so usage delta works.
 
 CPU_LABEL='CPU'
 DEG=$'°'
-STATE=/tmp/waybar-cpu.state
 
 find_pkg_temp() {
+    local h lbl name label
     for h in /sys/class/hwmon/hwmon*; do
-        [ "$(cat "$h/name" 2>/dev/null)" = coretemp ] || continue
+        read -r name < "$h/name" 2>/dev/null || continue
+        [ "$name" = coretemp ] || continue
         for lbl in "$h"/temp*_label; do
-            [ "$(cat "$lbl" 2>/dev/null)" = "Package id 0" ] || continue
+            read -r label < "$lbl" 2>/dev/null || continue
+            [ "$label" = "Package id 0" ] || continue
             echo "${lbl%_label}_input"; return 0
         done
     done
 }
 
-read_cpu_now() {
-    read -r _ u n s i io ir sq st _ < /proc/stat
-    total=$((u+n+s+i+io+ir+sq+st))
-    idle=$((i+io))
+load_color() {
+    # ratio = load1 / cores: <0.5 idle, <0.75 ok, <1.0 busy, >=1.0 saturated
+    awk -v l="$1" -v c="$2" 'BEGIN {
+        if (c <= 0) { print "#3a8a3a"; exit }
+        r = l / c
+        if      (r < 0.50) print "#3a8a3a"
+        else if (r < 0.75) print "#b8a020"
+        else if (r < 1.00) print "#cc6a1a"
+        else               print "#c83232"
+    }'
 }
-
-usage_color() {
-    local v=$1
-    if   (( v < 30 )); then echo "#3a8a3a"
-    elif (( v < 60 )); then echo "#b8a020"
-    elif (( v < 85 )); then echo "#cc6a1a"
-    else                    echo "#c83232"; fi
-}
-temp_color() {
-    local v=$1
-    if   (( v < 50 )); then echo "#3a6ea5"
-    elif (( v < 70 )); then echo "#3a8a3a"
-    elif (( v < 85 )); then echo "#b8a020"
-    elif (( v < 95 )); then echo "#cc6a1a"
-    else                    echo "#c83232"; fi
-}
-
-read_cpu_now
-
-if [ -r "$STATE" ]; then
-    read -r ptotal pidle < "$STATE"
-    dt=$((total - ptotal)); di=$((idle - pidle))
-    if (( dt > 0 )); then
-        usage=$(( (100 * (dt - di) + dt/2) / dt ))
-    else
-        usage=0
-    fi
-else
-    usage=0
-fi
-echo "$total $idle" > "$STATE"
 
 TEMP_FILE=$(find_pkg_temp)
-if [ -n "$TEMP_FILE" ] && t=$(cat "$TEMP_FILE" 2>/dev/null); then
+if [ -n "$TEMP_FILE" ] && read -r t < "$TEMP_FILE" 2>/dev/null; then
     temp=$((t / 1000))
 else
     temp=0
 fi
 
-uc=$(usage_color "$usage")
-tclass=$(_tclass="$temp"; \
-  if   (( _tclass < 50 )); then echo t-cool;
-  elif (( _tclass < 70 )); then echo t-mild;
-  elif (( _tclass < 85 )); then echo t-warm;
-  elif (( _tclass < 95 )); then echo t-hot;
-  else                          echo t-crit; fi)
-# fixed-width fields so 9% and 100% take the same horizontal space
-usage_str=$(printf '%3d%%' "$usage")
-temp_str=$(printf  '%3d%sC' "$temp" "$DEG")
+read -r l1 l5 l15 _ < /proc/loadavg
+cores=$(nproc 2>/dev/null || echo 1)
+
+lc=$(load_color "$l1" "$cores")
+if   (( temp < 50 )); then tclass=t-cool
+elif (( temp < 70 )); then tclass=t-mild
+elif (( temp < 85 )); then tclass=t-warm
+elif (( temp < 95 )); then tclass=t-hot
+else                       tclass=t-crit
+fi
+temp_str=$(printf '%3d%sC' "$temp" "$DEG")
 SPAN_ATTRS="line_height='1.4' foreground='#ffffff'"
-NEUTRAL_BG="#2d3436"
-# CPU label and usage chunk are explicit spans (their bgs are flat rectangles).
-# Temp area has no span: the widget background carries the temp color, so the
-# rounded right border-radius clips it nicely.
-text="<span ${SPAN_ATTRS} background='${NEUTRAL_BG}'>  ${CPU_LABEL}  </span><span ${SPAN_ATTRS} background='${uc}'>  ${usage_str}  </span><span ${SPAN_ATTRS}>  ${temp_str}  </span>"
-tooltip="CPU ${usage}%   Temp ${temp}${DEG}C"
+# Temp has no inline bg — the widget's CSS background paints it instead, so
+# border-radius clips it cleanly on the rounded right edge.
+text="<span ${SPAN_ATTRS} background='${lc}'>  ${CPU_LABEL} ${l1}/${cores}c </span><span ${SPAN_ATTRS}> ${temp_str}  </span>"
+tooltip="Load ${l1} ${l5} ${l15} over ${cores} cores   Temp ${temp}${DEG}C"
 printf '{"text":"%s","tooltip":"%s","class":"%s"}\n' "$text" "$tooltip" "$tclass"

@@ -127,12 +127,10 @@
     },
     "memory": {
         "interval": 5,
-        "format": "RAM {used:0.1f}/{total:0.1f}G  ZRAM {swapUsed:0.1f}/{swapTotal:0.1f}G",
+        "format": "RAM {used:0.1f}/{total:0.1f}G ({percentage}%)  ZRAM {swapUsed:0.1f}/{swapTotal:0.1f}G",
         "tooltip-format": "{percentage}% used\n{used:0.1f}GiB used of {total:0.1f}GiB\nSwap: {swapUsed:0.1f}/{swapTotal:0.1f}GiB",
         "states": {
-            "warning": 30,
-            "warm": 60,
-            "critical": 85,
+            "warning": 80,
             "blink": 90
         }
     },

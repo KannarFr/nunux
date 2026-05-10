@@ -190,9 +190,7 @@ label:focus {
 #custom-cpu.t-crit { background-color: #c83232; }
 
 #memory          { background-color: #3a8a3a; }
-#memory.warning  { background-color: #b8a020; }
-#memory.warm     { background-color: #cc6a1a; }
-#memory.critical { background-color: #c83232; }
+#memory.warning  { background-color: #cc6a1a; }
 #memory.blink {
     background-color: #c83232;
     color: #ffffff;
