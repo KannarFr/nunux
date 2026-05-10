@@ -93,7 +93,8 @@ button:hover {
 #scratchpad,
 #power-profiles-daemon,
 #mpd,
-#custom-cpu,
+#custom-cpu-load,
+#custom-cpu-temp,
 #language,
 #keyboard-state {
     padding: 0 10px;
@@ -178,16 +179,35 @@ label:focus {
     color: #000000;
 }
 
-#custom-cpu {
-    padding: 0;
-    background-color: rgba(45, 52, 54, 0.85);
+/* CPU and memory each split into two adjacent widgets so each paints its own
+   full-height GTK background — no Pango bleed across the seam. Inner edges
+   are flattened (no border, no radius) so each pair reads as one tile. */
+#custom-cpu-load,
+#memory.ram {
+    margin-right: 0;
+    border-right: 0;
+    border-radius: 4px 0 0 4px;
+    padding: 0 4px 0 8px;
 }
 
-#custom-cpu.t-cool { background-color: #3a6ea5; }
-#custom-cpu.t-mild { background-color: #3a8a3a; }
-#custom-cpu.t-warm { background-color: #b8a020; }
-#custom-cpu.t-hot  { background-color: #cc6a1a; }
-#custom-cpu.t-crit { background-color: #c83232; }
+#custom-cpu-temp,
+#memory.zram {
+    margin-left: -4px; /* cancels config.jsonc spacing:4 so tiles touch */
+    border-left: 0;
+    border-radius: 0 4px 4px 0;
+    padding: 0 8px 0 4px;
+}
+
+#custom-cpu-load.l-idle { background-color: #3a8a3a; }
+#custom-cpu-load.l-ok   { background-color: #b8a020; }
+#custom-cpu-load.l-busy { background-color: #cc6a1a; }
+#custom-cpu-load.l-sat  { background-color: #c83232; }
+
+#custom-cpu-temp.t-cool { background-color: #3a6ea5; }
+#custom-cpu-temp.t-mild { background-color: #3a8a3a; }
+#custom-cpu-temp.t-warm { background-color: #b8a020; }
+#custom-cpu-temp.t-hot  { background-color: #cc6a1a; }
+#custom-cpu-temp.t-crit { background-color: #c83232; }
 
 #memory          { background-color: #3a8a3a; }
 #memory.warning  { background-color: #cc6a1a; }
