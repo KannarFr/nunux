@@ -1,0 +1,35 @@
+[Default Applications]
+x-scheme-handler/jetbrains=jetbrains-toolbox.desktop
+x-scheme-handler/mailto=userapp-Thunderbird-0ZTHV2.desktop
+message/rfc822=userapp-Thunderbird-0ZTHV2.desktop
+x-scheme-handler/mid=userapp-Thunderbird-0ZTHV2.desktop
+x-scheme-handler/news=userapp-Thunderbird-4NHGV2.desktop
+x-scheme-handler/snews=userapp-Thunderbird-4NHGV2.desktop
+x-scheme-handler/nntp=userapp-Thunderbird-4NHGV2.desktop
+x-scheme-handler/feed=userapp-Thunderbird-JEYFV2.desktop
+application/rss+xml=userapp-Thunderbird-JEYFV2.desktop
+application/x-extension-rss=userapp-Thunderbird-JEYFV2.desktop
+x-scheme-handler/webcal=userapp-Thunderbird-9LZJV2.desktop
+text/calendar=userapp-Thunderbird-9LZJV2.desktop
+application/x-extension-ics=userapp-Thunderbird-9LZJV2.desktop
+x-scheme-handler/webcals=userapp-Thunderbird-9LZJV2.desktop
+text/html=firefox.desktop
+x-scheme-handler/http=firefox.desktop
+x-scheme-handler/https=firefox.desktop
+x-scheme-handler/about=firefox.desktop
+x-scheme-handler/unknown=firefox.desktop
+x-scheme-handler/claude-cli=claude-code-url-handler.desktop
+x-scheme-handler/slack=slack.desktop
+
+[Added Associations]
+x-scheme-handler/mailto=userapp-Thunderbird-0ZTHV2.desktop;
+x-scheme-handler/mid=userapp-Thunderbird-0ZTHV2.desktop;
+x-scheme-handler/news=userapp-Thunderbird-4NHGV2.desktop;
+x-scheme-handler/snews=userapp-Thunderbird-4NHGV2.desktop;
+x-scheme-handler/nntp=userapp-Thunderbird-4NHGV2.desktop;
+x-scheme-handler/feed=userapp-Thunderbird-JEYFV2.desktop;
+application/rss+xml=userapp-Thunderbird-JEYFV2.desktop;
+application/x-extension-rss=userapp-Thunderbird-JEYFV2.desktop;
+x-scheme-handler/webcal=userapp-Thunderbird-9LZJV2.desktop;
+x-scheme-handler/webcals=userapp-Thunderbird-9LZJV2.desktop;
+pdf=org.mozilla.Thunderbird.desktop;
