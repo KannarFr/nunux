@@ -52,7 +52,6 @@ Plugin 'junegunn/fzf.vim'
 Plugin 'stsewd/fzf-checkout.vim'
 Plugin 'vuciv/vim-bujo'
 Plugin 'tpope/vim-dispatch'
-Plugin 'theprimeagen/vim-be-good', {'do': './install.sh'}
 Plugin 'vim-airline/vim-airline'
 Plugin 'morhetz/gruvbox'
 
