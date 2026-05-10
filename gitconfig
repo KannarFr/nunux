@@ -1,10 +1,11 @@
 [user]
 	email = kannarfr@gmail.com
-	name = Alexandre DUVAL - @kannarfr
-	signingkey = E60D6264BE6C7938618582EC1F8F6C8C34CA75CD
+	name = kannar
+	signingkey = 7A664620C11CA1D1
 
 [color]
     ui = auto
+
 [diff]
     renames = copy
     renameLimit = 16536
@@ -23,12 +24,17 @@
 
 [alias]
 	co-pr = !sh -c 'git fetch origin pull/$1/head:pr/$1 && git checkout pr/$1' -
+    fixup = "!git log -n 50 --pretty=format:'%h %s' --no-merges | fzf | cut -c -7 | xargs -o git commit --fixup"
+	pfwl = push --force-with-lease
+	p = push
+	st = status -sb
 
 [pull]
 	rebase = true
 
 [push]
     default = simple
+	autoSetupRemote = true
 
 [gitreview]
     username = KannarFR
@@ -47,3 +53,20 @@
 
 [help]
 	autoCorrect = 3
+
+[core]
+	fileMode = true
+
+[rebase]
+	autosquash = true
+[safe]
+	directory = /usr/src/linux-stable
+[commit]
+	gpgsign = true
+[init]
+	defaultBranch = main
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
