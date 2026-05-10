@@ -51,7 +51,7 @@ Plugin 'vuciv/vim-bujo'
 Plugin 'tpope/vim-dispatch'
 Plugin 'theprimeagen/vim-be-good', {'do': './install.sh'}
 Plugin 'vim-airline/vim-airline'
-Plugin 'gruvbox-community/gruvbox'
+Plugin 'morhetz/gruvbox'
 
 " i do put that here x)
 Plugin 'colepeters/spacemacs-theme.vim'
@@ -69,8 +69,8 @@ if exists('+termguicolors')
 endif
 let g:gruvbox_invert_selection='0'
 
-colorscheme gruvbox
-set background=light
+"colorscheme gruvbox
+"set background=light
 
 if executable('rg')
     let g:rg_derive_root='true'
