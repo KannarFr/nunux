@@ -1,0 +1,4 @@
+# Tracked but secret-prone — edit only the live config copies in $HOME.
+# To deliberately update the placeholder in this repo: `git add -f <file>`.
+npmrc
+wgetpaste.conf
