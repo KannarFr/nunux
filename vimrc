@@ -1,4 +1,5 @@
 set nocompatible
+let g:coc_disable_startup_warning = 1
 
 syntax on
 
