@@ -1,7 +1,17 @@
-
 autoload -Uz compinit colors vcs_info
-compinit -u
 
+plugins=(
+        git
+        zsh-syntax-highlighting
+        zsh-autosuggestions
+)
+
+# Smarter completion initialization
+if [ "$(date +'%j')" != "$(stat -f '%Sm' -t '%j' ~/.zcompdump 2>/dev/null)" ]; then
+    compinit
+else
+    compinit -C
+fi
 # vcs_info
 precmd_vcs_info() { vcs_info }
 precmd_functions+=(precmd_vcs_info)
@@ -146,6 +156,8 @@ export PATH=$PATH:$HOME/.config/composer/vendor/bin
 export PATH=$PATH:$HOME/.npm-global/bin
 #export PATH=$PATH:"$(ruby -e 'print Gem.user_dir')/bin"
 export PATH=$PATH:$HOME/.cargo/bin
+export PATH=$PATH:$HOME/Android/Sdk/platform-tools
+export PATH=$PATH:$HOME/Android/Sdk/tools/bin
 export SSH_KEY_PATH="~/.ssh/rsa_id"
 
 export NVM_DIR="$HOME/.nvm"
@@ -157,3 +169,17 @@ export PATH=${PATH}:${HOME}/.pulsarctl/plugins
 
 eval "$(starship init zsh)"
 eval "$(direnv hook zsh)"
+
+export PATH="$HOME/.local/bin:$PATH"
+
+# pnpm
+export PNPM_HOME="/home/kannar/.local/share/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME:"*) ;;
+  *) export PATH="$PNPM_HOME:$PATH" ;;
+esac
+# pnpm end
+
+  # Android SDK
+  export ANDROID_HOME=$HOME/Android/Sdk
+  export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools:$PATH"

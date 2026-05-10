@@ -1,3 +1,7 @@
+#xwayland disable
+exec systemctl --user import-environment DISPLAY WAYLAND_DISPLAY XDG_RUNTIME_DIR
+exec hash dbus-update-activation-environment 2>/dev/null && dbus-update-activation-environment --systemd DISPLAY WAYLAND_DISPLAY XDG_RUNTIME_DIR
+
 input * {
 	xkb_layout fr
 }

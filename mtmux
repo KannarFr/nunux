@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+
+help(){
+   echo "usage: $0 hosts-file"
+   echo -e "\\nhosts-file\\tA file containing a hostname per line."
+   echo -e "\\nThis script creates a tiled tmux window with a pane for each host in hosts-file"
+   echo "where each pane runs 'ssh root@host'. The panes are synchronized, so any action"
+   echo "is sent to all the hosts."
+   echo -e "\\nBeware! it will connect you as root!"
+}
+
+main(){
+   readonly HOSTSFILE="$1"
+   local hostname
+   local port
+
+   if [[ ! -f "${HOSTSFILE}" ]]; then
+      echo "${HOSTSFILE} does not exist."
+      help
+      exit 1
+   fi
+
+   readonly SERVERS=$(cat "${HOSTSFILE}")
+
+   readonly targ=$(tmux new-window -P -F "#S:#I" -d -n "├┼┤$(basename "${HOSTSFILE}")")
+   echo ${targ}
+   for SERVER in $SERVERS; do
+      hostname=$(echo "$SERVER" | awk -F: '{print $1}')
+      port=$(echo "$SERVER" | awk -F: '{print $2}')
+      tmux split-window -fv -t "${targ}" "nocorrect env TERM=xterm ssh ${MTMUX_SSH_OPTS} -p ${port:-22} root@$hostname"
+      tmux select-layout -t "${targ}" tiled
+   done
+   tmux kill-pane -t "${targ}.0"
+   tmux select-layout -t "${targ}" tiled
+   echo "ooooooo"
+   sleep 2
+   tmux select-pane -t "${targ}.1"
+   echo "ook"
+   tmux bind-key C-m set-window-option synchronize-panes
+   echo "okkkkk"
+   sleep 2
+   tmux set-window-option -t "${targ}" synchronize-panes on
+   if [ -n "${TMUX:+x}" ]; then
+      tmux switch-client -t "${targ}"
+   else
+      tmux attach -t "${targ}"
+   fi
+}
+
+if [[ $# != 1 ]]; then
+   help
+   exit 1
+fi
+
+main "$@"
+
