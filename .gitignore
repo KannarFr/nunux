@@ -1,4 +1,7 @@
 # Tracked but secret-prone — edit only the live config copies in $HOME.
 # To deliberately update the placeholder in this repo: `git add -f <file>`.
+# These tracked files are also pinned with `git update-index --skip-worktree`
+# locally so unintended edits don't show up in `git status` either.
 npmrc
 wgetpaste.conf
+zprofile

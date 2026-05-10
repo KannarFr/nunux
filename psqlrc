@@ -6,6 +6,9 @@
 -- Errors in transaction can be corrected without re-playing the whole transaction
 \set ON_ERROR_ROLLBACK interactive
 
+-- Default connection options
+\setenv PGOPTIONS '-c tcp_keepalives_idle=60 -c tcp_keepalives_interval=30 -c tcp_keepalives_count=5'
+
 -- Use expanded table format when needed
 \x auto
 

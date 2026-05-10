@@ -1,7 +1,7 @@
 [user]
 	email = kannarfr@gmail.com
 	name = kannar
-	signingkey = 7A664620C11CA1D1
+	signingkey = 0548E2F14DDDFF40EB9D01DA2B81AD058BF050D8
 
 [color]
     ui = auto
@@ -63,6 +63,7 @@
 	directory = /usr/src/linux-stable
 [commit]
 	gpgsign = true
+	gpgsign = true
 [init]
 	defaultBranch = main
 [filter "lfs"]
@@ -70,3 +71,12 @@
 	smudge = git-lfs smudge -- %f
 	process = git-lfs filter-process
 	required = true
+[credential "https://gitlab.corp.clever-cloud.com"]
+	helper = 
+	helper = !/usr/bin/glab auth git-credential
+[credential "https://github.com"]
+	helper = 
+	helper = !/usr/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper = 
+	helper = !/usr/bin/gh auth git-credential
