@@ -13,6 +13,7 @@ input type:touchpad {
 
 exec waybar
 exec swaync
+exec wlsunset -l 48.62 -L 0.32 -t 3500 -T 6500
 
 # Default config for sway
 #
