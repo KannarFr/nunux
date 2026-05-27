@@ -8,13 +8,19 @@ input * {
 
 input type:touchpad {
 	tap enabled
-	#natural_scroll enabled
+	natural_scroll enabled
+	dwt enabled
+	middle_emulation enabled
 }
 
 exec waybar
 exec swaync
 exec wlsunset -l 48.62 -L 0.32 -t 3500 -T 6500
 exec wl-paste --watch cliphist store
+exec swayidle -w \
+          timeout 300 'swaylock -f -c 000000' \
+          timeout 600 'swaymsg "output * power off"' resume 'swaymsg "output * power on"' \
+          before-sleep 'swaylock -f -c 000000'
 
 # Default config for sway
 #
@@ -95,7 +101,7 @@ set $menu bemenu-run -l 15 -H 30 --fn "JetBrainsMono Nerd Font 11"
     bindsym $mod+p exec GRIMSHOT_FILENAME_FORMAT="$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)" grimshot --notify savecopy area
 
     # clipboard history (cliphist + bemenu picker)
-    bindsym $mod+c exec cliphist list | bemenu -l 15 -H 30 --fn "JetBrainsMono Nerd Font 11" -p clip | cliphist decode | wl-copy
+    bindsym $mod+c exec sel=$(cliphist list | bemenu -l 15 -H 30 --fn "JetBrainsMono Nerd Font 11" -p clip) && [ -n "$sel" ] && printf '%s' "$sel" | cliphist decode | wl-copy
 
     # dismiss notif
     #bindsym $mod+n exec makoctl dismiss
@@ -233,12 +239,20 @@ bindsym $mod+r mode "resize"
     # Special keys to adjust brightness via brightnessctl
     bindsym --locked XF86MonBrightnessDown exec brightnessctl set 5%-
     bindsym --locked XF86MonBrightnessUp exec brightnessctl set 5%+
-    # Special key to take a screenshot with grim
-    bindsym Print exec grim
+    # Special key to take a screenshot (whole screen to clipboard)
+    bindsym Print exec grimshot --notify copy screen
+
+    # Three-finger swipe to switch workspaces
+    bindgesture swipe:3:right workspace next
+    bindgesture swipe:3:left workspace prev
 
 
 for_window [floating] border pixel 2
 for_window [class=".*"] border pixel 0
+
+# Don't auto-lock/dim during fullscreen video
+for_window [app_id="firefox"] inhibit_idle fullscreen
+for_window [app_id="mpv"] inhibit_idle fullscreen
 
 include @sysconfdir@/sway/config.d/*
 
