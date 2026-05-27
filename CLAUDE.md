@@ -18,6 +18,7 @@ For most tracked files, the live path under `$HOME` (or `~/.config`) is a symlin
 | `sshconfig` | `~/.ssh/config` |
 | `gpg-agent.conf` | `~/.gnupg/gpg-agent.conf` |
 | `swayconfig` | `~/.config/sway/config` |
+| `swaylock` | `~/.config/swaylock/config` |
 | `waybar/` | `~/.config/waybar` |
 | `starship.toml` | `~/.config/starship.toml` |
 | `htoprc` | `~/.config/htop/htoprc` |
@@ -35,6 +36,7 @@ Snapshots / not symlinked (read-only references; do not assume edits here propag
 | `paludis-config/*` | `/etc/paludis/*` — Paludis is the Exherbo package manager. Current host is Arch, so this dir is likely archival from a prior install. |
 | `kernelconfig` | `/usr/src/linux/.config` — kernel build snapshot |
 | `mtmux`, `doc/` | utility script + ad-hoc notes; live where they are |
+| `bin/*` | helper scripts (`osd`, `battery-watch`) referenced by absolute path via `set $bin` in `swayconfig` — not symlinked, not on `$PATH` |
 
 ## Critical: the skip-worktree files
 

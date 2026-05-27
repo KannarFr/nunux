@@ -1,0 +1,46 @@
+#!/bin/sh
+# On-screen feedback for volume / brightness / mic, drawn as a swaync
+# notification with a progress bar. The synchronous hint replaces the
+# previous OSD in place instead of stacking.
+# Usage: osd {vol-up|vol-down|vol-mute|mic-mute|bright-up|bright-down}
+
+sink="@DEFAULT_SINK@"
+src="@DEFAULT_SOURCE@"
+tag="x-canonical-private-synchronous:osd"
+
+osd() { # $1 title  $2 value(0-100, optional bar)
+	if [ -n "$2" ]; then
+		notify-send -t 1200 -h "string:$tag" -h "int:value:$2" "$1"
+	else
+		notify-send -t 1200 -h "string:$tag" "$1"
+	fi
+}
+
+case "$1" in
+	vol-up)      pactl set-sink-mute "$sink" 0; pactl set-sink-volume "$sink" +5% ;;
+	vol-down)    pactl set-sink-mute "$sink" 0; pactl set-sink-volume "$sink" -5% ;;
+	vol-mute)    pactl set-sink-mute "$sink" toggle ;;
+	mic-mute)    pactl set-source-mute "$src" toggle ;;
+	bright-up)   brightnessctl set 5%+ >/dev/null ;;
+	bright-down) brightnessctl set 5%- >/dev/null ;;
+	*) echo "usage: osd {vol-up|vol-down|vol-mute|mic-mute|bright-up|bright-down}" >&2; exit 1 ;;
+esac
+
+case "$1" in
+	vol-*)
+		if pactl get-sink-mute "$sink" | grep -q yes; then
+			osd "🔇 Muted"
+		else
+			v=$(pactl get-sink-volume "$sink" | grep -oP '\d+(?=%)' | head -n1)
+			osd "🔊 Volume ${v}%" "$v"
+		fi ;;
+	mic-mute)
+		if pactl get-source-mute "$src" | grep -q yes; then
+			osd "🎤 Mic muted"
+		else
+			osd "🎤 Mic on"
+		fi ;;
+	bright-*)
+		b=$(brightnessctl -m i | cut -d, -f4 | tr -d '%')
+		osd "☀ Brightness ${b}%" "$b" ;;
+esac

@@ -1,0 +1,27 @@
+#!/bin/sh
+# Warn on low battery, suspend on critical. Started once from sway (exec),
+# so it runs for the life of the session. Only acts while discharging.
+
+BAT=/sys/class/power_supply/BAT0
+LOW=15    # notify once at/below this
+CRIT=5    # suspend at/below this
+warned=0
+
+while :; do
+	cap=$(cat "$BAT/capacity" 2>/dev/null)
+	status=$(cat "$BAT/status" 2>/dev/null)
+	if [ "$status" = Discharging ] && [ -n "$cap" ]; then
+		if [ "$cap" -le "$CRIT" ]; then
+			notify-send -u critical "Battery critical (${cap}%)" "Suspending in 10s…"
+			sleep 10
+			# bail if the user plugged in during the grace period
+			[ "$(cat "$BAT/status" 2>/dev/null)" = Discharging ] && systemctl suspend
+		elif [ "$cap" -le "$LOW" ] && [ "$warned" -eq 0 ]; then
+			notify-send -u critical "Battery low (${cap}%)" "Plug in soon."
+			warned=1
+		fi
+	else
+		warned=0   # reset once charging/charged so it can warn again next cycle
+	fi
+	sleep 120
+done
