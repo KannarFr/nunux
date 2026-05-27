@@ -34,7 +34,7 @@ set $right l
 # Your preferred terminal emulator
 set $term germinal
 # Your preferred application launcher
-set $menu wmenu-run
+set $menu bemenu-run -l 15 -H 30 --fn "JetBrainsMono Nerd Font 11"
 
 ### Output configuration
 #
@@ -94,8 +94,8 @@ set $menu wmenu-run
     # start screenshot
     bindsym $mod+p exec GRIMSHOT_FILENAME_FORMAT="$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)" grimshot --notify savecopy area
 
-    # clipboard history (cliphist + wmenu picker)
-    bindsym $mod+c exec cliphist list | wmenu -p clip | cliphist decode | wl-copy
+    # clipboard history (cliphist + bemenu picker)
+    bindsym $mod+c exec cliphist list | bemenu -l 15 -H 30 --fn "JetBrainsMono Nerd Font 11" -p clip | cliphist decode | wl-copy
 
     # dismiss notif
     #bindsym $mod+n exec makoctl dismiss
