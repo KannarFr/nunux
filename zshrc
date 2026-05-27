@@ -150,6 +150,13 @@ bindkey "\e[Z" reverse-menu-complete # Shift+Tab
 # fzf
 #[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 source <(fzf --zsh)
+# Use fd as the source (fast, respects .gitignore, includes hidden) and bat for previews
+export FZF_DEFAULT_COMMAND='fd --type f --hidden --follow --exclude .git'
+export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+export FZF_ALT_C_COMMAND='fd --type d --hidden --follow --exclude .git'
+export FZF_DEFAULT_OPTS='--height 40% --layout reverse --border'
+export FZF_CTRL_T_OPTS="--preview 'bat --style=numbers --color=always --line-range :200 {}'"
+export FZF_ALT_C_OPTS="--preview 'ls -la {}'"
 
 export BAT_CONFIG_PATH=$HOME/.bat.conf
 export PATH=$PATH:$HOME/.config/composer/vendor/bin
