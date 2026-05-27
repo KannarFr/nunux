@@ -93,6 +93,7 @@ set $menu bemenu-run -l 15 -H 30 --fn "JetBrainsMono Nerd Font 11"
 
     # Kill focused window
     bindsym Mod1+F4 kill
+    bindsym $mod+Shift+q kill
 
     # Start your launcher
     bindsym $mod+d exec $menu
@@ -103,8 +104,8 @@ set $menu bemenu-run -l 15 -H 30 --fn "JetBrainsMono Nerd Font 11"
     # clipboard history (cliphist + bemenu picker)
     bindsym $mod+c exec sel=$(cliphist list | bemenu -l 15 -H 30 --fn "JetBrainsMono Nerd Font 11" -p clip) && [ -n "$sel" ] && printf '%s' "$sel" | cliphist decode | wl-copy
 
-    # dismiss notif
-    #bindsym $mod+n exec makoctl dismiss
+    # power menu (bemenu chooser)
+    bindsym $mod+Escape exec chosen=$(printf 'lock\nsuspend\nlogout\nreboot\nshutdown' | bemenu -l 5 -H 30 --fn "JetBrainsMono Nerd Font 11" -p power); case "$chosen" in lock) swaylock -c 000000 ;; suspend) systemctl suspend ;; logout) swaymsg exit ;; reboot) systemctl reboot ;; shutdown) systemctl poweroff ;; esac
 
     # Drag floating windows by holding down $mod and left mouse button.
     # Resize them with right mouse button + $mod.
@@ -112,6 +113,9 @@ set $menu bemenu-run -l 15 -H 30 --fn "JetBrainsMono Nerd Font 11"
     # Change normal to inverse to use left mouse button for resizing and right
     # mouse button for dragging.
     floating_modifier $mod normal
+
+    # Press a workspace key twice to jump back to the previous one
+    workspace_auto_back_and_forth yes
 
     # Reload the configuration file
     bindsym $mod+Shift+c reload
