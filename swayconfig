@@ -92,7 +92,7 @@ set $menu wmenu-run
     bindsym $mod+d exec $menu
 
     # start screenshot
-    bindsym $mod+p exec sway-screenshot -m region
+    bindsym $mod+p exec GRIMSHOT_FILENAME_FORMAT="$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)" grimshot --notify savecopy area
 
     # clipboard history (cliphist + wmenu picker)
     bindsym $mod+c exec cliphist list | wmenu -p clip | cliphist decode | wl-copy
