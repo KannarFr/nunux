@@ -8,7 +8,9 @@ Personal dotfiles and system configuration. There is **no build, no tests, no li
 
 ## Deployment model: symlinks, not copies
 
-For most tracked files, the live path under `$HOME` (or `~/.config`) is a symlink pointing into this repo. Editing the file here **is** editing the live config — no separate sync step. Verify with `ls -la <live-path>` before assuming.
+For most tracked files, the live path under `$HOME` (or `~/.config`) is a symlink pointing into this repo. Editing the file here **is** editing the live config — no separate sync step. Verify with `ls -la <live-path>` before assuming. `./apply.sh` creates every symlink in the table below (idempotent; see README); the mapping it uses is the source of truth.
+
+Two repo regions: home dotfiles keep their bare names at the repo root, and everything bound to `~/.config` lives under `config/` mirroring the destination path.
 
 | Repo path | Live path (symlinked) |
 |---|---|
@@ -17,12 +19,12 @@ For most tracked files, the live path under `$HOME` (or `~/.config`) is a symlin
 | `bat` | `~/.bat.conf` |
 | `sshconfig` | `~/.ssh/config` |
 | `gpg-agent.conf` | `~/.gnupg/gpg-agent.conf` |
-| `swayconfig` | `~/.config/sway/config` |
-| `swaylock` | `~/.config/swaylock/config` |
-| `waybar/` | `~/.config/waybar` |
-| `starship.toml` | `~/.config/starship.toml` |
-| `htoprc` | `~/.config/htop/htoprc` |
-| `mimeapps.list` | `~/.config/mimeapps.list` |
+| `config/sway/config` | `~/.config/sway/config` |
+| `config/swaylock/config` | `~/.config/swaylock/config` |
+| `config/waybar/` | `~/.config/waybar` |
+| `config/starship.toml` | `~/.config/starship.toml` |
+| `config/htop/htoprc` | `~/.config/htop/htoprc` |
+| `config/mimeapps.list` | `~/.config/mimeapps.list` |
 | `claude/statusline.sh` | `~/.claude/statusline.sh` |
 | `claude/settings.json` | `~/.claude/settings.json` (user-level Claude Code config) |
 | `claude/commands/` | `~/.claude/commands` (user-defined slash commands) |
@@ -36,7 +38,7 @@ Snapshots / not symlinked (read-only references; do not assume edits here propag
 | `paludis-config/*` | `/etc/paludis/*` — Paludis is the Exherbo package manager. Current host is Arch, so this dir is likely archival from a prior install. |
 | `kernelconfig` | `/usr/src/linux/.config` — kernel build snapshot |
 | `mtmux`, `doc/` | utility script + ad-hoc notes; live where they are |
-| `bin/*` | helper scripts (`osd`, `battery-watch`, `powermenu`) referenced by absolute path via `set $bin` in `swayconfig` — not symlinked, not on `$PATH` |
+| `bin/*` | helper scripts (`osd`, `battery-watch`, `powermenu`) referenced by absolute path via `set $bin` in `config/sway/config` — not symlinked, not on `$PATH` |
 
 ## Critical: the skip-worktree files
 
@@ -51,11 +53,12 @@ Rules:
 ## Adding a new tracked dotfile
 
 When the user asks to bring a config under version control:
-1. `mv ~/.config/<thing> /home/kannar/git/kannar/nunux/<thing>`
-2. `ln -s /home/kannar/git/kannar/nunux/<thing> ~/.config/<thing>`
-3. `git add` + commit.
+1. Move it into the repo at its mirrored location — under `config/` for `~/.config` files (e.g. `mv ~/.config/foo/bar config/foo/bar`), or bare at the repo root for a home dotfile.
+2. Add a `"repo/path  $HOME/live/path"` line to the `MAP` table in `apply.sh`.
+3. Run `./apply.sh` to create the symlink (it backs up any existing real file to `<path>.bak` first).
+4. `git add` + commit.
 
-If the file may contain secrets, also `git update-index --skip-worktree <thing>` and add a note to `.gitignore` next to the existing entries.
+If the file may contain secrets, also `git update-index --skip-worktree <path>` and add a note to `.gitignore` next to the existing entries.
 
 ## Conventions worth knowing before editing
 
