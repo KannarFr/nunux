@@ -183,3 +183,4 @@ esac
   # Android SDK
   export ANDROID_HOME=$HOME/Android/Sdk
   export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools:$PATH"
+command -v mise >/dev/null && eval "$(mise activate zsh)"
