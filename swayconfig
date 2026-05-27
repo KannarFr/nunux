@@ -25,6 +25,7 @@ exec swayidle -w \
           timeout 600 'swaymsg "output * power off"' resume 'swaymsg "output * power on"' \
           before-sleep 'swaylock -f -c 000000'
 exec $bin/battery-watch
+exec foot --app-id=dropdown
 
 # Default config for sway
 #
@@ -109,7 +110,13 @@ set $menu bemenu-run -l 15 -H 30 --fn "JetBrainsMono Nerd Font 11"
     bindsym $mod+c exec sel=$(cliphist list | bemenu -l 15 -H 30 --fn "JetBrainsMono Nerd Font 11" -p clip) && [ -n "$sel" ] && printf '%s' "$sel" | cliphist decode | wl-copy
 
     # power menu (bemenu chooser)
-    bindsym $mod+Escape exec chosen=$(printf 'lock\nsuspend\nlogout\nreboot\nshutdown' | bemenu -l 5 -H 30 --fn "JetBrainsMono Nerd Font 11" -p power); case "$chosen" in lock) swaylock -c 000000 ;; suspend) systemctl suspend ;; logout) swaymsg exit ;; reboot) systemctl reboot ;; shutdown) systemctl poweroff ;; esac
+    bindsym $mod+Escape exec $bin/powermenu
+
+    # clear clipboard history (privacy)
+    bindsym $mod+Delete exec sh -c 'cliphist wipe; wl-copy --clear; notify-send "Clipboard history cleared"'
+
+    # dropdown (quake-style) terminal: ² toggles the scratchpad foot instance
+    bindsym $mod+twosuperior [app_id="dropdown"] scratchpad show
 
     # Drag floating windows by holding down $mod and left mouse button.
     # Resize them with right mouse button + $mod.
@@ -261,6 +268,17 @@ for_window [class=".*"] border pixel 0
 # Don't auto-lock/dim during fullscreen video
 for_window [app_id="firefox"] inhibit_idle fullscreen
 for_window [app_id="mpv"] inhibit_idle fullscreen
+
+# Dropdown terminal: park it in the scratchpad, sized as a top sheet
+for_window [app_id="dropdown"] move scratchpad, resize set width 90 ppt height 60 ppt
+
+# Float dialogs and pop-ups (window_role/_type are XWayland-only, harmless otherwise)
+for_window [window_role="pop-up"] floating enable
+for_window [window_role="dialog"] floating enable
+for_window [window_type="dialog"] floating enable
+
+# Picture-in-picture: keep it floating and visible across workspaces
+for_window [title="Picture-in-Picture"] floating enable, sticky enable
 
 include @sysconfdir@/sway/config.d/*
 

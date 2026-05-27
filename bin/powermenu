@@ -1,0 +1,14 @@
+#!/bin/sh
+# bemenu power chooser. Kept as a script because sway splits exec commands on
+# ';', which would break an inline case statement.
+
+chosen=$(printf 'lock\nsuspend\nlogout\nreboot\nshutdown' \
+	| bemenu -l 5 -H 30 --fn "JetBrainsMono Nerd Font 11" -p power)
+
+case "$chosen" in
+	lock)     swaylock -c 000000 ;;
+	suspend)  systemctl suspend ;;
+	logout)   swaymsg exit ;;
+	reboot)   systemctl reboot ;;
+	shutdown) systemctl poweroff ;;
+esac
