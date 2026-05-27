@@ -14,6 +14,7 @@ input type:touchpad {
 exec waybar
 exec swaync
 exec wlsunset -l 48.62 -L 0.32 -t 3500 -T 6500
+exec wl-paste --watch cliphist store
 
 # Default config for sway
 #
@@ -93,8 +94,8 @@ set $menu wmenu-run
     # start screenshot
     bindsym $mod+p exec sway-screenshot -m region
 
-    # start gpaste-client
-    bindsym $mod+c exec gpaste-client ui
+    # clipboard history (cliphist + wmenu picker)
+    bindsym $mod+c exec cliphist list | wmenu -p clip | cliphist decode | wl-copy
 
     # dismiss notif
     #bindsym $mod+n exec makoctl dismiss
