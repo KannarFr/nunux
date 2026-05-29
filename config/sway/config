@@ -19,8 +19,8 @@ set $bin /home/kannar/git/kannar/nunux/bin
 exec waybar
 exec swaync
 # gammastep (blue-light filter, config at ~/.config/gammastep/config.ini)
-# not auto-started; toggle with $mod+Shift+n
-# exec gammastep
+# toggle on/off with $mod+Shift+n
+exec gammastep
 exec wl-paste --watch cliphist store
 exec swayidle -w \
           timeout 3600 'swaylock -f -c 000000' \
