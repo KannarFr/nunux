@@ -18,7 +18,9 @@ set $bin /home/kannar/git/kannar/nunux/bin
 
 exec waybar
 exec swaync
-exec wlsunset -l 48.62 -L 0.32 -t 3500 -T 6500
+# gammastep (blue-light filter, config at ~/.config/gammastep/config.ini)
+# not auto-started; toggle with $mod+Shift+n
+# exec gammastep
 exec wl-paste --watch cliphist store
 exec swayidle -w \
           timeout 3600 'swaylock -f -c 000000' \
@@ -111,6 +113,9 @@ set $menu bemenu-run -l 15 -H 30 --fn "JetBrainsMono Nerd Font 11"
 
     # power menu (bemenu chooser)
     bindsym $mod+Escape exec $bin/powermenu
+
+    # toggle gammastep (blue-light filter) on/off
+    bindsym $mod+Shift+n exec pkill gammastep || gammastep
 
     # clear clipboard history (privacy)
     bindsym $mod+Delete exec sh -c 'cliphist wipe; wl-copy --clear; notify-send "Clipboard history cleared"'

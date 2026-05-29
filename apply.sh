@@ -40,6 +40,7 @@ MAP=(
   "sshconfig               $HOME/.ssh/config"
   "gpg-agent.conf          $HOME/.gnupg/gpg-agent.conf"
   "config/sway/config      $HOME/.config/sway/config"
+  "config/gammastep/config.ini  $HOME/.config/gammastep/config.ini"
   "config/swaylock/config  $HOME/.config/swaylock/config"
   "config/waybar           $HOME/.config/waybar"
   "config/starship.toml    $HOME/.config/starship.toml"

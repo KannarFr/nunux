@@ -20,6 +20,7 @@ Two repo regions: home dotfiles keep their bare names at the repo root, and ever
 | `sshconfig` | `~/.ssh/config` |
 | `gpg-agent.conf` | `~/.gnupg/gpg-agent.conf` |
 | `config/sway/config` | `~/.config/sway/config` |
+| `config/gammastep/config.ini` | `~/.config/gammastep/config.ini` |
 | `config/swaylock/config` | `~/.config/swaylock/config` |
 | `config/waybar/` | `~/.config/waybar` |
 | `config/starship.toml` | `~/.config/starship.toml` |
