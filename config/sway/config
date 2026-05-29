@@ -21,8 +21,8 @@ exec swaync
 exec wlsunset -l 48.62 -L 0.32 -t 3500 -T 6500
 exec wl-paste --watch cliphist store
 exec swayidle -w \
-          timeout 300 'swaylock -f -c 000000' \
-          timeout 600 'swaymsg "output * power off"' resume 'swaymsg "output * power on"' \
+          timeout 3600 'swaylock -f -c 000000' \
+          timeout 3900 'swaymsg "output * power off"' resume 'swaymsg "output * power on"' \
           before-sleep 'swaylock -f -c 000000'
 exec $bin/battery-watch
 exec foot --app-id=dropdown
