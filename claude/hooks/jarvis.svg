@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <!-- core glow -->
+    <radialGradient id="core" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"  stop-color="#eafcff"/>
+      <stop offset="35%" stop-color="#7fe9ff"/>
+      <stop offset="70%" stop-color="#15a9e0"/>
+      <stop offset="100%" stop-color="#0a4a73"/>
+    </radialGradient>
+    <radialGradient id="halo" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"  stop-color="#37c6ff" stop-opacity="0.55"/>
+      <stop offset="60%" stop-color="#1c9bd8" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#0a4a73" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="#bff2ff"/>
+      <stop offset="100%" stop-color="#2aa5d6"/>
+    </linearGradient>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3"/>
+    </filter>
+  </defs>
+
+  <!-- ambient halo -->
+  <circle cx="128" cy="128" r="120" fill="url(#halo)"/>
+
+  <!-- outer tech ring -->
+  <circle cx="128" cy="128" r="104" fill="none" stroke="url(#ring)" stroke-width="6" opacity="0.95"/>
+  <circle cx="128" cy="128" r="104" fill="none" stroke="#eafcff" stroke-width="1.5" opacity="0.5"/>
+
+  <!-- segmented coil ring (arc-reactor windings) -->
+  <g stroke="#9fe9ff" stroke-width="7" opacity="0.9">
+    <g fill="none">
+      <!-- 12 spokes around the coil -->
+      <line x1="128" y1="58"  x2="128" y2="86"/>
+      <line x1="128" y1="170" x2="128" y2="198"/>
+      <line x1="58"  y1="128" x2="86"  y2="128"/>
+      <line x1="170" y1="128" x2="198" y2="128"/>
+      <line x1="78.5" y1="78.5"  x2="98.3" y2="98.3"/>
+      <line x1="157.7" y1="157.7" x2="177.5" y2="177.5"/>
+      <line x1="177.5" y1="78.5"  x2="157.7" y2="98.3"/>
+      <line x1="98.3"  y1="157.7" x2="78.5"  y2="177.5"/>
+      <line x1="103" y1="64"  x2="113" y2="90"/>
+      <line x1="143" y1="166" x2="153" y2="192"/>
+      <line x1="64"  y1="153" x2="90"  y2="143"/>
+      <line x1="166" y1="113" x2="192" y2="103"/>
+    </g>
+  </g>
+
+  <!-- coil housing -->
+  <circle cx="128" cy="128" r="72" fill="none" stroke="url(#ring)" stroke-width="9"/>
+  <circle cx="128" cy="128" r="60" fill="none" stroke="#0a4a73" stroke-width="3" opacity="0.7"/>
+
+  <!-- inner triangle (signature reactor shape) -->
+  <polygon points="128,86 165,150 91,150" fill="none" stroke="#cdf6ff" stroke-width="4" opacity="0.85"/>
+
+  <!-- glowing core -->
+  <circle cx="128" cy="128" r="40" fill="url(#core)" filter="url(#soft)"/>
+  <circle cx="128" cy="128" r="40" fill="none" stroke="#eafcff" stroke-width="2"/>
+  <circle cx="128" cy="120" r="11" fill="#ffffff" opacity="0.9" filter="url(#soft)"/>
+</svg>

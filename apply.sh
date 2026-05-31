@@ -50,6 +50,7 @@ MAP=(
   "claude/settings.json    $HOME/.claude/settings.json"
   "claude/commands         $HOME/.claude/commands"
   "claude/agents           $HOME/.claude/agents"
+  "claude/hooks            $HOME/.claude/hooks"
 )
 
 link() {
