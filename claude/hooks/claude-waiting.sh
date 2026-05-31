@@ -8,11 +8,13 @@
 #     the moment you respond — by any means, not just by clicking it.
 # Wired to the Notification and Stop hooks in claude/settings.json.
 
-# --- read hook JSON from stdin (may be empty); one jq pass for both fields -----
+# --- read hook JSON from stdin (may be empty); one jq pass, line per field -----
+# Newline-separated (not @tsv): with a tab IFS, read collapses a leading empty
+# field, so an empty .message would swallow the event name into msg.
 input="$(cat)"
-IFS=$'\t' read -r msg event < <(
+{ read -r msg; read -r event; } < <(
   printf '%s' "$input" \
-    | jq -r '[(.message // ""), (.hook_event_name // "")] | @tsv' 2>/dev/null
+    | jq -r '.message // "", .hook_event_name // ""' 2>/dev/null
 )
 if [ -z "$msg" ]; then
   case "$event" in
