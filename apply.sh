@@ -42,6 +42,7 @@ MAP=(
   "config/sway/config      $HOME/.config/sway/config"
   "config/gammastep/config.ini  $HOME/.config/gammastep/config.ini"
   "config/swaylock/config  $HOME/.config/swaylock/config"
+  "config/swaync/config.json  $HOME/.config/swaync/config.json"
   "config/waybar           $HOME/.config/waybar"
   "config/starship.toml    $HOME/.config/starship.toml"
   "config/htop/htoprc      $HOME/.config/htop/htoprc"
