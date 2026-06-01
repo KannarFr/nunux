@@ -95,6 +95,7 @@ button:hover {
 #mpd,
 #custom-cpu-load,
 #custom-cpu-temp,
+#custom-vpn,
 #language,
 #keyboard-state {
     padding: 0 10px;
@@ -236,6 +237,24 @@ label:focus {
 #network.disconnected {
     background-color: #f53c3c;
 }
+
+/* network (link) + custom/vpn (tunnel) touch as one section — same split-tile
+   trick as cpu/memory. network is the left half, vpn the right half. */
+#network {
+    margin-right: 0;
+    border-right: 0;
+    border-radius: 4px 0 0 4px;
+}
+
+#custom-vpn {
+    margin-left: -4px; /* cancels config.jsonc spacing:4 so tiles touch */
+    border-left: 0;
+    border-radius: 0 4px 4px 0;
+}
+
+#custom-vpn.vpn-on      { background-color: #2ecc71; color: #000000; }
+#custom-vpn.vpn-off     { background-color: #f53c3c; color: #ffffff; }
+#custom-vpn.vpn-unknown { background-color: #90b1b1; color: #000000; }
 
 #pulseaudio {
     background-color: #f1c40f;
