@@ -13,7 +13,7 @@ icon="$(dirname "$(readlink -f "$0")")/jarvis.png"
 args=(
   --app-name=claude
   --icon="$icon"
-  --urgency=normal
+  --urgency=critical
   --expire-time=0
   --print-id
   --action="default=Focus pane"
