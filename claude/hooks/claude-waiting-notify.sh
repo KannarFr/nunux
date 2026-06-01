@@ -17,6 +17,7 @@ args=(
   --expire-time=0
   --print-id
   --action="default=Focus pane"
+  --action="focus=Focus pane"
 )
 [ -n "${CLAUDE_PREV:-}" ] && args+=(--replace-id "$CLAUDE_PREV")
 
@@ -32,8 +33,10 @@ id=""; read -r id <&3
 action=""; read -r action <&3   # blocks until the notification closes
 exec 3<&-
 
-# Only a real click focuses; replace / dismiss / expire leave the action empty.
-[ "$action" = "default" ] || exit 0
+# Any invoked action focuses: body-click ("default"), the "Focus pane" button,
+# or the $mod+g keybind (swaync-client -a 0, which fires the "focus" button).
+# Replace / dismiss / expire leave the action empty.
+[ -n "$action" ] || exit 0
 
 # Raise/focus the terminal window in Sway.
 [ -n "${CLAUDE_CON:-}" ] && swaymsg "[con_id=$CLAUDE_CON] focus" >/dev/null 2>&1

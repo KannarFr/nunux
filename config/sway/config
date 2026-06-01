@@ -98,6 +98,9 @@ set $menu bemenu-run -l 15 -H 30 --fn "JetBrainsMono Nerd Font 11"
 
     bindsym $mod+n exec swaync-client -t -sw
 
+    # jump to the pane Claude is waiting in (fires the latest notification's action)
+    bindsym $mod+g exec swaync-client -a 0
+
     # Kill focused window
     bindsym Mod1+F4 kill
     bindsym $mod+Shift+q kill
