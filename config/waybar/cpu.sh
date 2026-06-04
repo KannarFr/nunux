@@ -31,7 +31,7 @@ case "$1" in
             else if (r < 1.00) print "l-busy"
             else               print "l-sat"
         }')
-        text="CPU ${l1}/${cores}c"
+        text="${l1}/${cores}c"
         tooltip="Load ${l1} ${l5} ${l15} over ${cores} cores"
         printf '{"text":"%s","tooltip":"%s","class":"%s"}\n' "$text" "$tooltip" "$lclass"
         ;;
