@@ -3,8 +3,14 @@ Include ccadmingeneratedsshconfig
 AddKeysToAgent yes
 
 Host *
-    ServerAliveInterval 15
-    ServerAliveCountMax 20
+  ServerAliveInterval 15
+  ServerAliveCountMax 20
 
 Host *.clvrcld.net *.clever-cloud.com hv-* cellar-* hadoop-*
   User root
+
+Host aur.archlinux.org
+  User aur
+  IdentityFile ~/.ssh/aur
+  IdentitiesOnly yes
+
