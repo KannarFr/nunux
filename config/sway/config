@@ -22,6 +22,8 @@ exec swaync
 # toggle on/off with $mod+Shift+n
 exec gammastep
 exec wl-paste --watch cliphist store
+# Handy: offline speech-to-text (hold ctrl+space, speak; injects via wtype)
+exec handy
 exec swayidle -w \
           timeout 3600 'swaylock -f -c 000000' \
           timeout 3900 'swaymsg "output * power off"' resume 'swaymsg "output * power on"' \
@@ -122,6 +124,12 @@ set $menu bemenu-run -l 15 -H 30 --fn "JetBrainsMono Nerd Font 11"
 
     # clear clipboard history (privacy)
     bindsym $mod+Delete exec sh -c 'cliphist wipe; wl-copy --clear; notify-send "Clipboard history cleared"'
+
+    # voice dictation (Handy): tap to start recording, tap again to stop + type via wtype
+    # ($mod+Shift+m cancels/discards). Driven via CLI because Tauri global hotkeys
+    # don't fire under native-Wayland focus on sway.
+    bindsym $mod+m exec handy --toggle-transcription
+    bindsym $mod+Shift+m exec handy --cancel
 
     # dropdown (quake-style) terminal: ² toggles the scratchpad foot instance
     bindsym $mod+twosuperior [app_id="dropdown"] scratchpad show
