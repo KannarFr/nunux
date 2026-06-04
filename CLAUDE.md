@@ -27,6 +27,7 @@ Two repo regions: home dotfiles keep their bare names at the repo root, and ever
 | `config/starship.toml` | `~/.config/starship.toml` |
 | `config/htop/htoprc` | `~/.config/htop/htoprc` |
 | `config/mimeapps.list` | `~/.config/mimeapps.list` |
+| `config/wireplumber/wireplumber.conf.d/51-bluez.conf` | `~/.config/wireplumber/wireplumber.conf.d/51-bluez.conf` |
 | `claude/statusline.sh` | `~/.claude/statusline.sh` |
 | `claude/settings.json` | `~/.claude/settings.json` (user-level Claude Code config) |
 | `claude/commands/` | `~/.claude/commands` (user-defined slash commands) |

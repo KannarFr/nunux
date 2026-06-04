@@ -47,6 +47,7 @@ MAP=(
   "config/starship.toml    $HOME/.config/starship.toml"
   "config/htop/htoprc      $HOME/.config/htop/htoprc"
   "config/mimeapps.list    $HOME/.config/mimeapps.list"
+  "config/wireplumber/wireplumber.conf.d/51-bluez.conf  $HOME/.config/wireplumber/wireplumber.conf.d/51-bluez.conf"
   "claude/statusline.sh    $HOME/.claude/statusline.sh"
   "claude/settings.json    $HOME/.claude/settings.json"
   "claude/commands         $HOME/.claude/commands"
