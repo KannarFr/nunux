@@ -26,6 +26,7 @@ run '~/.tmux/plugins/tpm/tpm'
 set -g default-command "${SHELL}"
 set -g base-index 1
 set-option -ga terminal-overrides ",xterm-256color:Tc"
+set -g extended-keys on
 set-option -sg escape-time 10
 set-option -g status-keys vi
 set-option -g visual-bell off
