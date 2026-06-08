@@ -4,7 +4,23 @@
 set -eu
 
 repo="$(cd "$(dirname "$0")/.." && pwd)"
-pacman -Qqen > "$repo/system-config/pkglist-pacman.txt"   # official, explicit
-pacman -Qqem > "$repo/system-config/pkglist-aur.txt"      # AUR/foreign, explicit
+
+# Write to a temp file and rename only on success, so a pacman failure can't
+# truncate the tracked list to empty (the redirect would zero it before pacman runs).
+# Usage: refresh <dest> <pacman-query-flags...>
+refresh() {
+	dest="$1"; shift
+	tmp="$(mktemp)"
+	if pacman "$@" > "$tmp"; then
+		chmod 644 "$tmp"
+		mv "$tmp" "$dest"
+	else
+		rm -f "$tmp"
+		return 1
+	fi
+}
+
+refresh "$repo/system-config/pkglist-pacman.txt" -Qqen   # official, explicit
+refresh "$repo/system-config/pkglist-aur.txt"    -Qqem   # AUR/foreign, explicit
 
 echo "pacman: $(wc -l < "$repo/system-config/pkglist-pacman.txt") | aur: $(wc -l < "$repo/system-config/pkglist-aur.txt")"
