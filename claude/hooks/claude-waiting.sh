@@ -51,13 +51,15 @@ if [ -n "$pane" ] && [ -n "$SWAYSOCK" ]; then
 fi
 
 # --- audible ping, same skip-when-focused logic as the notification -----------
-# Stop gets the Jarvis voice ("J'ai fini, mon reuf." — piper-tts fr_FR-tom,
-# regenerate via ~/.claude/hooks/sounds/), everything else an "incoming" chime.
+# Random Henri voice line (edge-tts fr-FR-HenriNeural) from a per-event pool, so
+# the repeated ping doesn't get samey. Stop draws from sounds/done/, everything
+# else from sounds/wait/. Edit phrases + regenerate via ~/.claude/hooks/sounds/gen.sh.
 case "$event" in
-  Stop) snd="$HOME/.claude/hooks/sounds/jarvis-done.wav" ;;
-  *)    snd="$HOME/.claude/hooks/sounds/jarvis-wait.wav" ;;
+  Stop) snddir="$HOME/.claude/hooks/sounds/done" ;;
+  *)    snddir="$HOME/.claude/hooks/sounds/wait" ;;
 esac
-paplay "$snd" >/dev/null 2>&1 &
+snd="$(find "$snddir" -name '*.wav' 2>/dev/null | shuf -n1)"
+[ -n "$snd" ] && paplay "$snd" >/dev/null 2>&1 &
 
 # --- project dir for a useful title -------------------------------------------
 dir="$(basename "${CLAUDE_PROJECT_DIR:-$PWD}")"
