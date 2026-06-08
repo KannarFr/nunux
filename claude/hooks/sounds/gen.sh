@@ -37,18 +37,25 @@ wait_lines=(
   "Faut que tu jettes un œil."
 )
 
+# Build the whole pool in a temp dir, then swap it into place only on full
+# success — a network/edge-tts failure mid-run thus never wipes the working
+# clips (edge-tts stderr is kept visible so a failure is diagnosable).
 gen() {
   local dir="$1"; shift
-  rm -rf "$dir"; mkdir -p "$dir"
+  local tmpdir; tmpdir="$(mktemp -d "$dir.XXXXXX")"  # same fs as $dir → atomic mv
+  chmod 755 "$tmpdir"                                 # mktemp -d is 0700; match repo dirs
   local i=1 line mp3 wav
   for line in "$@"; do
-    wav="$dir/$(printf '%02d' "$i").wav"
+    wav="$tmpdir/$(printf '%02d' "$i").wav"
     mp3="$(mktemp --suffix=.mp3)"
-    edge-tts --voice "$voice" --text "$line" --write-media "$mp3" >/dev/null 2>&1
+    if ! edge-tts --voice "$voice" --text "$line" --write-media "$mp3" >/dev/null; then
+      rm -f "$mp3"; rm -rf "$tmpdir"; return 1
+    fi
     ffmpeg -y -loglevel error -i "$mp3" -ar 24000 -ac 1 -sample_fmt s16 "$wav"
     rm -f "$mp3"
     i=$((i + 1))
   done
+  rm -rf "$dir"; mv "$tmpdir" "$dir"
 }
 
 gen "$here/done" "${done_lines[@]}"
