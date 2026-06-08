@@ -43,6 +43,8 @@ Snapshots / not symlinked (read-only references; do not assume edits here propag
 | `mtmux`, `doc/` | utility script + ad-hoc notes; live where they are |
 | `bin/*` | helper scripts (`osd`, `battery-watch`, `powermenu`) referenced by absolute path via `set $bin` in `config/sway/config` — not symlinked, not on `$PATH` |
 
+Snapshots are one-way copies — there is no sync. Editing the live source (e.g. `/etc/...`) leaves the repo stale and `git status` clean, so drift is invisible. To update one: re-copy the source over the repo path by hand (`sudo cp /etc/systemd/zram-generator.conf system-config/system/systemd/zram-generator.conf`), preserving the mirrored layout (`/etc/foo/bar` → `system-config/system/foo/bar`), then `git add` + commit. If you edit the repo copy instead, remember to `sudo cp` it back to the live path — the running system reads the original, not the snapshot.
+
 ## Critical: the skip-worktree files
 
 `npmrc`, `wgetpaste.conf`, and `zprofile` are tracked but pinned locally with `git update-index --skip-worktree` (verify: `git ls-files -v | grep '^S'`). The `.gitignore` header explains why: these contain or risk leaking secrets. Note that `zprofile` is *also* symlinked from `~/.zprofile`, so edits to the symlink land in this repo's working tree — skip-worktree just hides them from `git status` so they aren't accidentally committed.
