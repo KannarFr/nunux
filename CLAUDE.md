@@ -42,8 +42,19 @@ Snapshots / not symlinked (read-only references; do not assume edits here propag
 | `kernelconfig` | `/usr/src/linux/.config` — kernel build snapshot |
 | `mtmux`, `doc/` | utility script + ad-hoc notes; live where they are |
 | `bin/*` | helper scripts (`osd`, `battery-watch`, `powermenu`) referenced by absolute path via `set $bin` in `config/sway/config` — not symlinked, not on `$PATH` |
+| `system-config/pkglist-pacman.txt`, `system-config/pkglist-aur.txt` | `pacman -Qqen` / `pacman -Qqem` — explicit packages (official / AUR), for rebuilding a machine |
 
 Snapshots are one-way copies — there is no sync. Editing the live source (e.g. `/etc/...`) leaves the repo stale and `git status` clean, so drift is invisible. To update one: re-copy the source over the repo path by hand (`sudo cp /etc/systemd/zram-generator.conf system-config/system/systemd/zram-generator.conf`), preserving the mirrored layout (`/etc/foo/bar` → `system-config/system/foo/bar`), then `git add` + commit. If you edit the repo copy instead, remember to `sudo cp` it back to the live path — the running system reads the original, not the snapshot.
+
+## Package lists (rebuilding a machine)
+
+`system-config/pkglist-*.txt` track explicitly-installed packages so a new install loses nothing. They are snapshots like the rest — regenerate with `bin/pkglist-refresh` after any install/remove, then commit the diff (only *explicit* packages are listed; dependencies pulled in automatically are intentionally omitted and will be re-resolved on restore).
+
+Restore on a fresh box (AUR list needs `yay`/`paru` bootstrapped first):
+```
+sudo pacman -S --needed - < system-config/pkglist-pacman.txt
+yay  -S --needed - < system-config/pkglist-aur.txt
+```
 
 ## Critical: the skip-worktree files
 

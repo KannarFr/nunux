@@ -1,0 +1,10 @@
+#!/bin/sh
+# Regenerate the tracked package lists from the live system.
+# Run after installing/removing packages, then commit the diff.
+set -eu
+
+repo="$(cd "$(dirname "$0")/.." && pwd)"
+pacman -Qqen > "$repo/system-config/pkglist-pacman.txt"   # official, explicit
+pacman -Qqem > "$repo/system-config/pkglist-aur.txt"      # AUR/foreign, explicit
+
+echo "pacman: $(wc -l < "$repo/system-config/pkglist-pacman.txt") | aur: $(wc -l < "$repo/system-config/pkglist-aur.txt")"
