@@ -6,8 +6,8 @@
 # Inputs via env: CLAUDE_CON CLAUDE_PANE CLAUDE_MSG CLAUDE_DIR CLAUDE_PREV CLAUDE_STATE.
 set -u
 
-# JARVIS arc-reactor emblem shipped alongside this script in the repo.
-icon="$(dirname "$(readlink -f "$0")")/jarvis.png"
+# Henri emblem shipped alongside this script in the repo.
+icon="$(dirname "$(readlink -f "$0")")/henri.png"
 [ -f "$icon" ] || icon=utilities-terminal
 
 args=(
