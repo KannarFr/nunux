@@ -43,12 +43,15 @@ Snapshots / not symlinked (read-only references; do not assume edits here propag
 | `mtmux`, `doc/` | utility script + ad-hoc notes; live where they are |
 | `bin/*` | helper scripts (`osd`, `battery-watch`, `powermenu`) referenced by absolute path via `set $bin` in `config/sway/config` — not symlinked, not on `$PATH` |
 | `system-config/pkglist-pacman.txt`, `system-config/pkglist-aur.txt` | `pacman -Qqen` / `pacman -Qqem` — explicit packages (official / AUR), for rebuilding a machine |
+| `system-config/system/pacman.d/hooks/*` | `/etc/pacman.d/hooks/*` — pacman hooks (e.g. auto-refresh of the package lists) |
 
 Snapshots are one-way copies — there is no sync. Editing the live source (e.g. `/etc/...`) leaves the repo stale and `git status` clean, so drift is invisible. To update one: re-copy the source over the repo path by hand (`sudo cp /etc/systemd/zram-generator.conf system-config/system/systemd/zram-generator.conf`), preserving the mirrored layout (`/etc/foo/bar` → `system-config/system/foo/bar`), then `git add` + commit. If you edit the repo copy instead, remember to `sudo cp` it back to the live path — the running system reads the original, not the snapshot.
 
 ## Package lists (rebuilding a machine)
 
-`system-config/pkglist-*.txt` track explicitly-installed packages so a new install loses nothing. They are snapshots like the rest — regenerate with `bin/pkglist-refresh` after any install/remove, then commit the diff (only *explicit* packages are listed; dependencies pulled in automatically are intentionally omitted and will be re-resolved on restore).
+`system-config/pkglist-*.txt` track explicitly-installed packages so a new install loses nothing. They are snapshots like the rest — `bin/pkglist-refresh` regenerates them, then commit the diff (only *explicit* packages are listed; dependencies pulled in automatically are intentionally omitted and will be re-resolved on restore).
+
+The refresh runs **automatically** via a pacman PostTransaction hook (`system-config/system/pacman.d/hooks/pkglist-refresh.hook`, live at `/etc/pacman.d/hooks/`). The hook runs as root, so it `su`s to `kannar` to keep the repo files user-owned — the hardcoded username and repo path make it host-specific; fix both when restoring on a new box. It only rewrites the working-tree files; **you still commit the diff by hand.**
 
 Restore on a fresh box (AUR list needs `yay`/`paru` bootstrapped first):
 ```

@@ -1,0 +1,11 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Operation = Remove
+Type = Package
+Target = *
+
+[Action]
+Description = Refreshing tracked package lists (nunux repo)...
+When = PostTransaction
+Exec = /usr/bin/su kannar -s /bin/sh -c /home/kannar/git/kannar/nunux/bin/pkglist-refresh
