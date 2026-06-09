@@ -11,9 +11,6 @@ nitrogen
 piper-tts-bin
 slack-desktop
 stripe-cli
-tuxedo-control-center-bin
-tuxedo-drivers-dkms
-tuxedo-yt6801-dkms-git
 vban-git
 visual-studio-code-bin
 yay

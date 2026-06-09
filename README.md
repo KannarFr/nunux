@@ -20,34 +20,62 @@ There is no build, no test, no lint. Most changes are one-line tweaks.
 The full repo-path → live-path mapping is the `MAP` table in
 [`apply.sh`](apply.sh), which is the source of truth for what gets linked.
 
-## Applying on a new machine
+## Reproducing on a new machine
+
+Two entry points:
+
+- **`bootstrap.sh`** — full setup on a bare Arch install: installs packages,
+  links dotfiles (calls `apply.sh`), sets the login shell, enables services,
+  bootstraps Vim plugins. Idempotent; re-runnable. This is what you want on a
+  new laptop.
+- **`apply.sh`** — just the dotfile symlinks (a subset of the above), for when
+  the system is already set up and you only want the configs.
 
 ```sh
 git clone <this-repo> ~/git/kannar/nunux
 cd ~/git/kannar/nunux
-./apply.sh
+./bootstrap.sh            # full machine setup  (./bootstrap.sh --help for flags)
+# — or, dotfiles only —
+./apply.sh               # ./apply.sh --dry-run to preview
 ```
 
 `apply.sh` creates every symlink in its `MAP` table. It is **idempotent** and
-safe to re-run any time:
+safe to re-run any time: a path already pointing at this repo is left alone
+(`ok`), a stale/broken symlink is repointed, and a pre-existing *real* file is
+renamed to `<path>.bak` before linking (`bak`).
 
-- a path already pointing at this repo is left alone (`ok`),
-- a stale or broken symlink is repointed,
-- a pre-existing *real* file is renamed to `<path>.bak` before linking (`bak`).
+### New-machine checklist
 
-Preview without touching anything:
+`bootstrap.sh` automates the safe, host-agnostic steps and prints the rest as a
+checklist when it finishes. The parts that **cannot** be automated (they are
+disk-, hardware-, or secret-specific) and that you must do by hand:
 
-```sh
-./apply.sh --dry-run
-```
+- **Hardware packages.** Core lists are hardware-agnostic; machine-specific AUR
+  packages (currently the Tuxedo drivers + control center) live in
+  `system-config/pkglist-aur-hardware.txt`. `bootstrap.sh` prompts before
+  installing them — only accept on Tuxedo hardware, otherwise install the right
+  drivers for the new machine instead.
+- **`/etc` files.** `system-config/system/*` are read-only snapshots, never
+  symlinked. Copy them into place by hand — but **regenerate `fstab` and
+  `crypttab`** for the new disk (their UUIDs/LUKS setup differ). Fix the
+  hardcoded username + repo path in `pacman.d/hooks/pkglist-refresh.hook` before
+  copying it to `/etc/pacman.d/hooks/`.
+- **Secrets.** Create `~/.local/share/secrets.env` (sourced by `zprofile` if
+  present). Nothing secret is tracked here.
+- **GPG key.** `gitconfig` signs commits by default — import your secret key or
+  commits fail.
+- **SSH keys.** Restore `~/.ssh/` keys; git pushes over SSH (`github:`/`clever:`
+  URL rewrites).
+- **Coursier/JVM.** Run `cs setup` — `zprofile` expects a coursier-installed JDK
+  on `PATH`.
 
-After applying, a few things live outside the symlink model:
+Other things to know, handled automatically by `bootstrap.sh` but listed for the
+dotfiles-only path:
 
-- **Secrets** load from `~/.local/share/secrets.env`, sourced by `zprofile` if
-  present. Nothing secret is tracked here — create that file by hand.
-- **Skip-worktree files.** `npmrc`, `wgetpaste.conf`, and `zprofile` are secret-prone
-  templates pinned locally so accidental edits stay out of `git status`. The
-  `--skip-worktree` flag is per-checkout, so re-pin after a fresh clone:
+- **Skip-worktree files.** `npmrc`, `wgetpaste.conf`, and `zprofile` are
+  secret-prone templates pinned locally so accidental edits stay out of
+  `git status`. The `--skip-worktree` flag is per-checkout, so re-pin after a
+  fresh clone:
   ```sh
   git update-index --skip-worktree npmrc wgetpaste.conf zprofile
   ```

@@ -1,9 +1,16 @@
 #!/bin/sh
 # Regenerate the tracked package lists from the live system.
 # Run after installing/removing packages, then commit the diff.
+#
+# Hardware/host-specific AUR packages (currently the Tuxedo drivers + control
+# center) live in pkglist-aur-hardware.txt — a hand-curated file, NOT
+# auto-generated — and are subtracted from pkglist-aur.txt here, so the main
+# AUR list stays hardware-agnostic and safe to restore on a different machine.
+# Add/remove hardware packages by editing pkglist-aur-hardware.txt directly.
 set -eu
 
 repo="$(cd "$(dirname "$0")/.." && pwd)"
+hw="$repo/system-config/pkglist-aur-hardware.txt"
 
 # Write to a temp file and rename only on success, so a pacman failure can't
 # truncate the tracked list to empty (the redirect would zero it before pacman runs).
@@ -21,6 +28,27 @@ refresh() {
 }
 
 refresh "$repo/system-config/pkglist-pacman.txt" -Qqen   # official, explicit
-refresh "$repo/system-config/pkglist-aur.txt"    -Qqem   # AUR/foreign, explicit
 
-echo "pacman: $(wc -l < "$repo/system-config/pkglist-pacman.txt") | aur: $(wc -l < "$repo/system-config/pkglist-aur.txt")"
+# AUR list: explicit foreign packages, minus the hardware-specific ones.
+all="$(mktemp)"; out="$(mktemp)"
+if pacman -Qqem > "$all"; then
+	if [ -f "$hw" ]; then
+		# drop any line exactly matching an entry in the hardware list.
+		# grep exits 1 when every line is filtered out — that's a valid
+		# (empty) result, not an error, so only abort on exit >=2.
+		grep -vxF -f "$hw" "$all" > "$out" || [ $? -eq 1 ]
+	else
+		cp "$all" "$out"
+	fi
+	chmod 644 "$out"
+	mv "$out" "$repo/system-config/pkglist-aur.txt"
+	rm -f "$all"
+else
+	rm -f "$all" "$out"
+	exit 1
+fi
+
+printf 'pacman: %s | aur: %s | aur-hardware: %s\n' \
+	"$(wc -l < "$repo/system-config/pkglist-pacman.txt")" \
+	"$(wc -l < "$repo/system-config/pkglist-aur.txt")" \
+	"$([ -f "$hw" ] && grep -c . "$hw" || echo 0)"

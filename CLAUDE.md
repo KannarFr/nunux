@@ -10,6 +10,8 @@ Personal dotfiles and system configuration. There is **no build, no tests, no li
 
 For most tracked files, the live path under `$HOME` (or `~/.config`) is a symlink pointing into this repo. Editing the file here **is** editing the live config — no separate sync step. Verify with `ls -la <live-path>` before assuming. `./apply.sh` creates every symlink in the table below (idempotent; see README); the mapping it uses is the source of truth.
 
+For a **full new-machine setup** (packages, services, login shell, Vim plugins, then `apply.sh`) use `./bootstrap.sh` — it automates the host-agnostic steps and prints the disk-/key-/secret-specific ones as a closing checklist. `apply.sh` is the dotfiles-only subset.
+
 Two repo regions: home dotfiles keep their bare names at the repo root, and everything bound to `~/.config` lives under `config/` mirroring the destination path.
 
 | Repo path | Live path (symlinked) |
@@ -50,6 +52,8 @@ Snapshots are one-way copies — there is no sync. Editing the live source (e.g.
 ## Package lists (rebuilding a machine)
 
 `system-config/pkglist-*.txt` track explicitly-installed packages so a new install loses nothing. They are snapshots like the rest — `bin/pkglist-refresh` regenerates them, then commit the diff (only *explicit* packages are listed; dependencies pulled in automatically are intentionally omitted and will be re-resolved on restore).
+
+The three lists: `pkglist-pacman.txt` (official, `-Qqen`), `pkglist-aur.txt` (foreign, `-Qqem`), and `pkglist-aur-hardware.txt` — a **hand-curated** list of hardware-/host-specific AUR packages (currently the Tuxedo drivers + control center). `pkglist-refresh` **subtracts** the hardware list from the auto-generated `pkglist-aur.txt` so the main AUR list stays hardware-agnostic and safe to restore on a different machine. Add/remove hardware packages by editing `pkglist-aur-hardware.txt` directly (plain package names, no comments — it's fed to `yay -S - <file>`); the refresh keeps the main list in sync. Files must contain only package names (no `#` comments), since they're piped into pacman/yay stdin.
 
 The refresh runs **automatically** via a pacman PostTransaction hook (`system-config/system/pacman.d/hooks/pkglist-refresh.hook`, live at `/etc/pacman.d/hooks/`). The hook runs as root, so it `su`s to `kannar` to keep the repo files user-owned — the hardcoded username and repo path make it host-specific; fix both when restoring on a new box. It only rewrites the working-tree files; **you still commit the diff by hand.**
 
