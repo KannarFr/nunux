@@ -30,7 +30,7 @@ case "$prof" in
     *)           PICON=$'\U000F0210' ;;  # unknown profile → fan glyph
 esac
 
-unknown() { printf '{"text":"%s --","tooltip":"%s","class":"fan-unknown"}\n' "$PICON" "$1"; exit 0; }
+unknown() { jq -cn --arg t "$PICON --" --arg tt "$1" '{text:$t,tooltip:$tt,class:"fan-unknown"}'; exit 0; }
 
 # Make sure tccd is actually sampling the fans (no-op if already on).
 if [ "$(busctl --system call "$bus" "$obj" "$bus" GetSensorDataCollectionStatus 2>/dev/null)" != "b true" ]; then
@@ -55,11 +55,14 @@ else                         class=fan-loud
 fi
 
 text="${PICON} ${ICON} ${cpu_spd}%"
-tooltip="${prof:-?} profile\nCPU fan ${cpu_spd}%"
+# Real newlines here; jq escapes them to \n in the JSON it emits. Profile names
+# are user-authored, so let jq escape every field instead of hand-quoting.
+tooltip="${prof:-?} profile"$'\n'"CPU fan ${cpu_spd}%"
 [ "${cpu_t:-0}" -gt 0 ] 2>/dev/null && tooltip="${tooltip} · ${cpu_t}°C"
 if [ "${fan2_spd:--1}" -ge 0 ] 2>/dev/null; then
-    tooltip="${tooltip}\n2nd fan ${fan2_spd}%"
+    tooltip="${tooltip}"$'\n'"2nd fan ${fan2_spd}%"
     [ "${fan2_t:-0}" -gt 0 ] 2>/dev/null && tooltip="${tooltip} · ${fan2_t}°C"
 fi
 
-printf '{"text":"%s","tooltip":"%s","class":"%s"}\n' "$text" "$tooltip" "$class"
+jq -cn --arg text "$text" --arg tooltip "$tooltip" --arg class "$class" \
+    '{text:$text,tooltip:$tooltip,class:$class}'

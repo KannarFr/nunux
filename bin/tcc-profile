@@ -29,7 +29,7 @@ chosen=$(printf '%s\n' "$menu" | cut -f2- \
 	| bemenu -l 10 -H 30 --fn "JetBrainsMono Nerd Font 11" -p profile)
 [ -n "$chosen" ] || exit 0
 
-id=$(printf '%s\n' "$menu" | grep -F "	${chosen}" | head -n1 | cut -f1)
+id=$(printf '%s\n' "$menu" | awk -F'\t' -v d="$chosen" '$2==d{print $1; exit}')
 [ -n "$id" ] || exit 0
 
 busctl --system call "$bus" "$obj" "$bus" SetTempProfileById s "$id" >/dev/null
