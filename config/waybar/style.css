@@ -82,7 +82,7 @@ button:hover {
 #memory,
 #disk,
 #temperature,
-#backlight,
+#custom-backlight,
 #network,
 #pulseaudio,
 #wireplumber,
@@ -95,9 +95,9 @@ button:hover {
 #mpd,
 #custom-cpu-load,
 #custom-cpu-temp,
+#custom-fan,
 #custom-vpn,
-#language,
-#keyboard-state {
+#language {
     padding: 0 10px;
     color: #ffffff;
     margin: 2px 2px 4px 2px;
@@ -210,6 +210,11 @@ label:focus {
 #custom-cpu-temp.t-hot  { background-color: #cc6a1a; }
 #custom-cpu-temp.t-crit { background-color: #c83232; }
 
+#custom-fan.fan-quiet   { background-color: #3a8a3a; }
+#custom-fan.fan-mid     { background-color: #b8a020; }
+#custom-fan.fan-loud    { background-color: #cc6a1a; }
+#custom-fan.fan-unknown { background-color: #4b5563; }
+
 #memory          { background-color: #3a8a3a; }
 #memory.warning  { background-color: #cc6a1a; }
 #memory.blink {
@@ -226,7 +231,7 @@ label:focus {
     background-color: #964B00;
 }
 
-#backlight {
+#custom-backlight {
     background-color: #90b1b1;
 }
 
@@ -341,21 +346,6 @@ label:focus {
     color: #740864;
     padding: 0 5px;
     min-width: 16px;
-}
-
-#keyboard-state {
-    background: #97e1ad;
-    color: #000000;
-    padding: 0 0px;
-    min-width: 16px;
-}
-
-#keyboard-state > label {
-    padding: 0 5px;
-}
-
-#keyboard-state > label.locked {
-    background: rgba(0, 0, 0, 0.2);
 }
 
 #scratchpad {
