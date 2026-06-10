@@ -2,9 +2,13 @@
 #
 # migrate-home — pull /home/$USER from the old laptop onto this (new) one.
 #
-# Run this ON THE NEW laptop, after the base Arch install + first boot, as your
-# user but from a plain TTY — NOT inside the sway/graphical session. Copying over
-# a live desktop's open dotfiles, sockets and lock files is asking for trouble.
+# Run this ON THE NEW laptop, as your user, at the VERY FIRST TTY login — before
+# starting sway and before any session agents come up (gnome-keyring, gpg-agent,
+# dbus). It overwrites the running user's own home in place, so anything holding
+# files open there (a live keyring daemon owning ~/.local/share/keyrings, a
+# gpg-agent in ~/.gnupg) can clobber or corrupt the copy. A fresh box at first
+# login has almost no live state; that is the safe window. If you can, run it
+# from a separate admin account into kannar's not-logged-in home instead.
 #
 # It rsyncs the whole home over SSH, preserving owners, perms, ACLs, xattrs,
 # symlinks and hardlinks. Because it brings ~/.ssh, ~/.gnupg,
@@ -37,15 +41,29 @@ done
 
 [ $# -ge 1 ] || { printf 'usage: %s [--dry-run] [--slim] [user@]old-host\n' "${0##*/}" >&2; exit 2; }
 SRC_HOST="$1"
-case "$SRC_HOST" in *@*) ;; *) SRC_HOST="$USER@$SRC_HOST" ;; esac
 
 command -v rsync >/dev/null || { echo "rsync not installed (pacman -S rsync)" >&2; exit 1; }
 [ "$(id -u)" -ne 0 ] || { echo "run as your user, not root (keeps ownership + uses your ssh keys)" >&2; exit 1; }
 
-# Paths assume the same username/home on both boxes. Trailing slash on SRC means
-# "copy the contents of remote $HOME into local $HOME", not a nested dir.
-SRC="${SRC_HOST}:${HOME}/"
-DEST="$HOME/"
+# Resolve identities from the system rather than $USER/$HOME, which may be unset
+# in a stripped env (su without login, cron) and would abort under `set -u`.
+LOCAL_USER="$(id -un)"
+LOCAL_HOME="$(getent passwd "$LOCAL_USER" | cut -d: -f6)" || true
+[ -n "$LOCAL_HOME" ] || { echo "could not determine your home directory" >&2; exit 1; }
+
+case "$SRC_HOST" in *@*) ;; *) SRC_HOST="$LOCAL_USER@$SRC_HOST" ;; esac
+
+# Resolve the REMOTE home over ssh instead of assuming it equals the local path —
+# correct even when pulling as a differently-named remote user. Doubles as an
+# early connectivity/auth check, so a bad host fails here, not mid-transfer.
+echo "Connecting to $SRC_HOST ..."
+REMOTE_HOME="$(ssh "$SRC_HOST" 'printf %s "$HOME"')" \
+  || { echo "cannot ssh to $SRC_HOST" >&2; exit 1; }
+[ -n "$REMOTE_HOME" ] || { echo "remote \$HOME is empty on $SRC_HOST" >&2; exit 1; }
+
+# Trailing slash on SRC: copy the CONTENTS of the remote home into the local one.
+SRC="${SRC_HOST}:${REMOTE_HOME}/"
+DEST="$LOCAL_HOME/"
 
 # Always skip: filesystem cruft and things that can't be recreated as files.
 EXCLUDES=(
@@ -66,7 +84,7 @@ if [ "$SLIM" -eq 1 ]; then
   )
 fi
 
-printf 'Local:  %s (%s:%s)  ->  %s\n' "$USER" "$(id -u)" "$(id -g)" "$DEST"
+printf 'Local:  %s (%s:%s)  ->  %s\n' "$LOCAL_USER" "$(id -u)" "$(id -g)" "$DEST"
 printf 'Remote: %s\n' "$SRC"
 [ "$(id -u)" -eq 1000 ] || warn "local UID is $(id -u), not 1000 — ownership may not match the old box"
 echo
