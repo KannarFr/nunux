@@ -42,11 +42,17 @@ if [ -n "$pane" ] && [ -n "$SWAYSOCK" ]; then
     p="$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')"
   done
 
-  # Already looking at this window? Don't bother notifying.
+  # Already looking at this exact pane? Don't bother notifying. We skip only when
+  # the host window is focused AND Claude's tmux pane is the active/visible one —
+  # so a sibling pane in the same window (or a background window) still pings.
   if [ -n "$con" ]; then
     focused="$(printf '%s' "$tree" \
       | jq -r 'first(.. | objects | select(.focused? == true) | .id) // empty')"
-    [ "$focused" = "$con" ] && exit 0
+    if [ "$focused" = "$con" ]; then
+      active="$(tmux display-message -p -t "$pane" \
+        '#{&&:#{window_active},#{pane_active}}' 2>/dev/null)"
+      [ "$active" = "1" ] && exit 0
+    fi
   fi
 fi
 
