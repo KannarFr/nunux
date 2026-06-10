@@ -1,0 +1,10 @@
+[Unit]
+Description=restic backup of %h to S3
+# Skip quietly until a backup destination is configured (see bin/restic-backup).
+ConditionPathExists=%h/.local/share/restic.env
+
+[Service]
+Type=oneshot
+Nice=10
+IOSchedulingClass=idle
+ExecStart=%h/git/kannar/nunux/bin/restic-backup

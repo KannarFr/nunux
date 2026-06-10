@@ -48,6 +48,8 @@ MAP=(
   "config/htop/htoprc      $HOME/.config/htop/htoprc"
   "config/mimeapps.list    $HOME/.config/mimeapps.list"
   "config/wireplumber/wireplumber.conf.d/51-bluez.conf  $HOME/.config/wireplumber/wireplumber.conf.d/51-bluez.conf"
+  "config/systemd/user/restic-backup.service  $HOME/.config/systemd/user/restic-backup.service"
+  "config/systemd/user/restic-backup.timer    $HOME/.config/systemd/user/restic-backup.timer"
   "claude/statusline.sh    $HOME/.claude/statusline.sh"
   "claude/settings.json    $HOME/.claude/settings.json"
   "claude/commands         $HOME/.claude/commands"

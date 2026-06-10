@@ -30,6 +30,7 @@ Two repo regions: home dotfiles keep their bare names at the repo root, and ever
 | `config/htop/htoprc` | `~/.config/htop/htoprc` |
 | `config/mimeapps.list` | `~/.config/mimeapps.list` |
 | `config/wireplumber/wireplumber.conf.d/51-bluez.conf` | `~/.config/wireplumber/wireplumber.conf.d/51-bluez.conf` |
+| `config/systemd/user/restic-backup.{service,timer}` | `~/.config/systemd/user/restic-backup.{service,timer}` |
 | `claude/statusline.sh` | `~/.claude/statusline.sh` |
 | `claude/settings.json` | `~/.claude/settings.json` (user-level Claude Code config) |
 | `claude/commands/` | `~/.claude/commands` (user-defined slash commands) |
@@ -43,7 +44,7 @@ Snapshots / not symlinked (read-only references; do not assume edits here propag
 | `paludis-config/*` | `/etc/paludis/*` — Paludis is the Exherbo package manager. Current host is Arch, so this dir is likely archival from a prior install. |
 | `kernelconfig` | `/usr/src/linux/.config` — kernel build snapshot |
 | `mtmux`, `doc/` | utility script + ad-hoc notes; live where they are |
-| `bin/*` | helper scripts (`osd`, `battery-watch`, `powermenu`) referenced by absolute path via `set $bin` in `config/sway/config` — not symlinked, not on `$PATH` |
+| `bin/*` | helper scripts (`osd`, `battery-watch`, `powermenu`, `restic-backup`, `migrate-home`, `pkglist-refresh`) referenced by absolute path (sway's `set $bin`, systemd units, pacman hook) — not symlinked, not on `$PATH` |
 | `system-config/pkglist-pacman.txt`, `system-config/pkglist-aur.txt` | `pacman -Qqen` / `pacman -Qqem` — explicit packages (official / AUR), for rebuilding a machine |
 | `system-config/system/pacman.d/hooks/*` | `/etc/pacman.d/hooks/*` — pacman hooks (e.g. auto-refresh of the package lists) |
 

@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+#
+# restic-backup — back up $HOME to an S3-compatible restic repository.
+#
+# Configuration lives in ~/.local/share/restic.env (untracked, chmod 600 —
+# same convention as secrets.env). It must export:
+#
+#   RESTIC_REPOSITORY      e.g. s3:https://cellar-c2.services.clever-cloud.com/<bucket>
+#   RESTIC_PASSWORD        repo encryption passphrase — keep a copy OFF this
+#                          machine (password manager / paper); losing it means
+#                          losing every backup
+#   AWS_ACCESS_KEY_ID      S3 credentials
+#   AWS_SECRET_ACCESS_KEY
+#   RESTIC_OPTS            optional extra flags, e.g. "-o s3.bucket-lookup=path"
+#                          (needed by Ceph-based providers like Cellar)
+#
+#   ./restic-backup            backup $HOME, then prune per retention policy
+#   ./restic-backup init       create the repository (run once, after filling
+#                              restic.env)
+#   ./restic-backup <any>      pass through to restic with the env loaded,
+#                              e.g. ./restic-backup snapshots | check | mount
+#
+# Scheduled daily by the restic-backup.timer systemd user unit (see
+# config/systemd/user/, enabled by bootstrap.sh).
+#
+set -euo pipefail
+
+ENV_FILE="$HOME/.local/share/restic.env"
+if [ ! -r "$ENV_FILE" ]; then
+  cat >&2 <<EOF
+$ENV_FILE missing — no backup destination configured.
+
+Create it (chmod 600) with:
+  export RESTIC_REPOSITORY="s3:https://cellar-c2.services.clever-cloud.com/<bucket>"
+  export RESTIC_PASSWORD="<long random passphrase — copy it somewhere off this machine>"
+  export AWS_ACCESS_KEY_ID="..."
+  export AWS_SECRET_ACCESS_KEY="..."
+  export RESTIC_OPTS="-o s3.bucket-lookup=path"
+
+then run: ${0##*/} init
+EOF
+  exit 1
+fi
+# shellcheck source=/dev/null
+. "$ENV_FILE"
+: "${RESTIC_REPOSITORY:?not set in $ENV_FILE}"
+
+# Optional provider-specific flags (word-split on purpose; no quoted args).
+read -ra OPTS <<< "${RESTIC_OPTS:-}"
+
+# Regenerable bulk — mirrors migrate-home --slim.
+EXCLUDES=(
+  --exclude "$HOME/.cache"
+  --exclude "$HOME/.local/share/Trash"
+  --exclude "$HOME/.thumbnails"
+  --exclude '**/node_modules'
+  --exclude "$HOME/.mozilla/firefox/*/cache2"
+)
+
+case "${1:-backup}" in
+  backup)
+    restic "${OPTS[@]}" backup --one-file-system --retry-lock 10m \
+      "${EXCLUDES[@]}" "$HOME"
+    restic "${OPTS[@]}" forget --retry-lock 10m --prune \
+      --keep-daily 7 --keep-weekly 4 --keep-monthly 6
+    ;;
+  init)
+    restic "${OPTS[@]}" init
+    ;;
+  *)
+    exec restic "${OPTS[@]}" "$@"
+    ;;
+esac

@@ -14,7 +14,7 @@ There is no build, no test, no lint. Most changes are one-line tweaks.
 | repo root | home dotfiles under their bare names — `bashrc`, `zshrc`, `vimrc`, `gitconfig`, `tmux`, `bat`, … |
 | `config/` | everything bound to `~/.config`, mirroring the destination path — `config/sway/config`, `config/swaylock/config`, `config/waybar/`, `config/starship.toml`, … |
 | `claude/` | user-level Claude Code config → `~/.claude` (`settings.json`, `statusline.sh`, `commands/`, `agents/`, `hooks/`) |
-| `bin/` | helper scripts (`osd`, `battery-watch`, `powermenu`) called by absolute path from `config/sway/config` — not symlinked, not on `$PATH` |
+| `bin/` | helper scripts (`osd`, `battery-watch`, `powermenu`, `restic-backup`, `migrate-home`, `pkglist-refresh`) called by absolute path (sway config, systemd units, pacman hook) — not symlinked, not on `$PATH` |
 | `system-config/`, `paludis-config/`, `kernelconfig`, `doc/` | read-only snapshots / notes — **not** symlinked; edits here do not propagate |
 
 The full repo-path → live-path mapping is the `MAP` table in
@@ -62,6 +62,13 @@ disk-, hardware-, or secret-specific) and that you must do by hand:
   copying it to `/etc/pacman.d/hooks/`.
 - **Secrets.** Create `~/.local/share/secrets.env` (sourced by `zprofile` if
   present). Nothing secret is tracked here.
+- **Backups.** `bin/restic-backup` sends `$HOME` to an S3-compatible restic
+  repo daily (`restic-backup.timer`, enabled by `bootstrap.sh`). Create
+  `~/.local/share/restic.env` with the repo URL + credentials (run the script
+  with no env file for the template); the timer skips quietly until it exists.
+  On a machine restored with `migrate-home`, the existing repo carries over —
+  just don't run `init` again. Keep a copy of `RESTIC_PASSWORD` off the
+  machine: without it the backups are unreadable.
 - **GPG key.** `gitconfig` signs commits by default — import your secret key or
   commits fail.
 - **SSH keys.** Restore `~/.ssh/` keys; git pushes over SSH (`github:`/`clever:`

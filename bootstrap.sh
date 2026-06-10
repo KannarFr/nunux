@@ -114,7 +114,8 @@ fi
 
 say "Enabling user services"
 enable_usr swaync.service vban-emitter.service vban-receptor.service \
-           wireplumber.service pipewire.socket pipewire-pulse.socket gnome-keyring-daemon.socket
+           wireplumber.service pipewire.socket pipewire-pulse.socket gnome-keyring-daemon.socket \
+           restic-backup.timer
 
 # 7. Vim / Vundle -----------------------------------------------------------
 say "Vim plugins (Vundle)"
@@ -135,6 +136,11 @@ cat <<'EOF'
       then: sudo cp .../pkglist-refresh.hook /etc/pacman.d/hooks/
 
   [ ] Secrets: create ~/.local/share/secrets.env (sourced by zprofile).
+
+  [ ] Backups: create ~/.local/share/restic.env (S3 repo + credentials —
+      run bin/restic-backup for the template), then 'bin/restic-backup init'
+      unless the repo already exists. The daily timer is enabled above and
+      skips quietly until restic.env exists.
 
   [ ] GPG key: import your secret key (git signs commits by default), e.g.
       gpg --import < key.asc

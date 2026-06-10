@@ -114,6 +114,7 @@ qpdf
 ranger
 reflector
 remmina
+restic
 rofi
 rsync
 ruby
