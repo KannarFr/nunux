@@ -1,0 +1,35 @@
+#!/bin/sh
+# bemenu picker for TUXEDO Control Center profiles. Talks to tccd over the
+# system bus (no root needed — same interface the GUI uses). The active
+# profile is marked and pre-selected. SetTempProfileById applies immediately;
+# it is a live override, not the persisted per-power-state assignment in
+# /etc/tcc/settings, so it reverts on reboot or AC<->battery change.
+
+bus="com.tuxedocomputers.tccd"
+obj="/com/tuxedocomputers/tccd"
+
+# busctl prints: s "<json-with-escaped-quotes>"; strip the 's ' tag, then let
+# jq decode the JSON-string token into the raw inner JSON.
+call() {
+	busctl --system call "$bus" "$obj" "$bus" "$1" 2>/dev/null \
+		| sed 's/^s //' | jq -r '.'
+}
+
+active=$(call GetActiveProfileJSON | jq -r '.id')
+
+# Per-profile nerd-font glyphs (literal UTF-8 — this is /bin/sh, no $'\U' escapes).
+# Keyed by name; must stay in sync with the case in config/waybar/fan.sh.
+icons='{"Performance":"󰓅","Balanced":"󰗑","Silent":"󰛚","Powersave":"󰌪"}'
+
+# id<TAB>icon name for every custom profile (skips the read-only built-ins); mark active.
+menu=$(call GetCustomProfilesJSON | jq -r --arg a "$active" --argjson ic "$icons" \
+	'.[] | "\(.id)\t\(if .id == $a then "● " else "  " end)\($ic[.name] // " ") \(.name)"')
+
+chosen=$(printf '%s\n' "$menu" | cut -f2- \
+	| bemenu -l 10 -H 30 --fn "JetBrainsMono Nerd Font 11" -p profile)
+[ -n "$chosen" ] || exit 0
+
+id=$(printf '%s\n' "$menu" | grep -F "	${chosen}" | head -n1 | cut -f1)
+[ -n "$id" ] || exit 0
+
+busctl --system call "$bus" "$obj" "$bus" SetTempProfileById s "$id" >/dev/null
