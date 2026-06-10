@@ -55,12 +55,25 @@ EXCLUDES=(
   --exclude "$HOME/.thumbnails"
   --exclude '**/node_modules'
   --exclude "$HOME/.mozilla/firefox/*/cache2"
+  # Sockets / FUSE mounts / runtime cruft — unreadable, so restic would otherwise
+  # exit 3 ("some files could not be read") on them. Mirrors migrate-home's list.
+  --exclude "$HOME/.gvfs"
+  --exclude "$HOME/.dbus"
+  --exclude "$HOME/.local/share/gvfs-metadata"
 )
 
 case "${1:-backup}" in
   backup)
+    # restic exit 3 = snapshot created but some files couldn't be read (open
+    # sockets, vanished/racey files in a live $HOME). The backup is still valid,
+    # so treat it as success and go on to prune; only a real failure (1, repo
+    # locked, etc.) aborts before forget. Without this, set -e would skip the
+    # prune every night and the timer would report failure on a healthy backup.
+    rc=0
     restic "${OPTS[@]}" backup --one-file-system --retry-lock 10m \
-      "${EXCLUDES[@]}" "$HOME"
+      "${EXCLUDES[@]}" "$HOME" || rc=$?
+    [ "$rc" -eq 0 ] || [ "$rc" -eq 3 ] || exit "$rc"
+    [ "$rc" -eq 3 ] && echo "restic: some files couldn't be read (exit 3) — snapshot still created" >&2
     restic "${OPTS[@]}" forget --retry-lock 10m --prune \
       --keep-daily 7 --keep-weekly 4 --keep-monthly 6
     ;;
