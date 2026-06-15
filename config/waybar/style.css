@@ -132,7 +132,7 @@ button:hover {
 
 #battery.charging, #battery.plugged {
     color: #ffffff;
-    background-color: #26A65B;
+    background-color: #3a8a3a;
 }
 
 @keyframes blink {
@@ -216,7 +216,7 @@ label:focus {
 #custom-fan.fan-loud    { background-color: #cc6a1a; }
 #custom-fan.fan-unknown { background-color: #4b5563; }
 
-#custom-power-draw.charging    { background-color: #26A65B; }
+#custom-power-draw.charging    { background-color: #3a8a3a; }
 #custom-power-draw.discharging { background-color: #b8a020; }
 
 #memory          { background-color: #3a8a3a; }
