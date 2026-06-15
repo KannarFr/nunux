@@ -116,14 +116,46 @@ say "Enabling user services"
 enable_usr swaync.service vban-emitter.service vban-receptor.service \
            wireplumber.service pipewire.socket pipewire-pulse.socket gnome-keyring-daemon.socket
 
-# 7. Vim / Vundle -----------------------------------------------------------
+# 7. default GDM session ----------------------------------------------------
+# gdm depends on gnome-shell, so a gnome.desktop session exists and GDM
+# defaults to it. Pin sway as this user's session in AccountsService so login
+# lands in sway instead of GNOME. (Host-local state under /var/lib; the gear
+# menu at the greeter writes the same file.)
+say "Default session (sway)"
+asf="/var/lib/AccountsService/users/$USER"
+# /var/lib/AccountsService/users is 0700 root, so read/test it via sudo — and
+# never blindly overwrite an existing file (GDM stores Language/Icon/etc there).
+if sudo grep -q '^Session=sway$' "$asf" 2>/dev/null; then
+  echo "  already sway"
+elif sudo test -f "$asf"; then
+  sudo sed -i -E '/^\[User\]/,$ { /^Session=/d }; /^\[User\]/a Session=sway' "$asf" \
+    && echo "  set Session=sway in existing file" \
+    || warn "could not patch $asf — pick Sway from the GDM gear menu instead"
+else
+  sudo install -Dm644 /dev/stdin "$asf" <<EOF && echo "  pinned sway for $USER" \
+    || warn "could not write $asf — pick Sway from the GDM gear menu instead"
+[User]
+Session=sway
+XSession=
+SystemAccount=false
+EOF
+fi
+
+# 8. Vim / Vundle -----------------------------------------------------------
 say "Vim plugins (Vundle)"
 vundle="$HOME/.vim/bundle/Vundle.vim"
 [ -d "$vundle" ] || git clone https://github.com/VundleVim/Vundle.vim.git "$vundle"
 vim +PluginInstall +qall </dev/null >/dev/null 2>&1 && echo "  plugins installed" \
   || warn "run ':PluginInstall' inside vim by hand"
 
-# 8. manual checklist -------------------------------------------------------
+# 9. tmux / tpm -------------------------------------------------------------
+say "tmux plugins (tpm)"
+tpm="$HOME/.tmux/plugins/tpm"
+[ -d "$tpm" ] || git clone https://github.com/tmux-plugins/tpm.git "$tpm"
+"$tpm/bin/install_plugins" >/dev/null 2>&1 && echo "  plugins installed" \
+  || warn "open tmux and press 'prefix + I' to install plugins by hand"
+
+# 10. manual checklist ------------------------------------------------------
 say "Done — remaining MANUAL steps (host-/secret-specific, not automated):"
 cat <<'EOF'
 
