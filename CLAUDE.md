@@ -44,9 +44,9 @@ Snapshots / not symlinked (read-only references; do not assume edits here propag
 | `paludis-config/*` | `/etc/paludis/*` — Paludis is the Exherbo package manager. Current host is Arch, so this dir is likely archival from a prior install. |
 | `kernelconfig` | `/usr/src/linux/.config` — kernel build snapshot |
 | `mtmux`, `doc/` | utility script + ad-hoc notes; live where they are |
-| `bin/*` | helper scripts (`osd`, `battery-watch`, `powermenu`, `restic-backup`, `migrate-home`, `pkglist-refresh`, `tcc-profile`, `charge-profile`) referenced by absolute path (sway's `set $bin`, systemd units, pacman hook, waybar `on-click`) — not symlinked, not on `$PATH` |
+| `bin/*` | helper scripts (`osd`, `battery-watch`, `powermenu`, `restic-backup`, `migrate-home`, `pkglist-refresh`, `tcc-profile`, `charge-profile`, `tcc-snapshot`) referenced by absolute path (sway's `set $bin`, systemd units, pacman hooks, waybar `on-click`) — not symlinked, not on `$PATH` |
 | `system-config/pkglist-pacman.txt`, `system-config/pkglist-aur.txt` | `pacman -Qqen` / `pacman -Qqem` — explicit packages (official / AUR), for rebuilding a machine |
-| `system-config/system/pacman.d/hooks/*` | `/etc/pacman.d/hooks/*` — pacman hooks (e.g. auto-refresh of the package lists) |
+| `system-config/system/pacman.d/hooks/*` | `/etc/pacman.d/hooks/*` — pacman hooks: `pkglist-refresh.hook` (auto-refresh the package lists) and `tcc-snapshot.hook` (re-copy `/etc/tcc/*` into the repo via `bin/tcc-snapshot`). Both run PostTransaction as root and `su` to kannar; they only rewrite working-tree files — commit by hand. Snapshotting `/etc/tcc` on a *package* transaction is opportunistic: TCC config actually drifts from GUI edits, so this just sweeps it up next time you run pacman. |
 
 Snapshots are one-way copies — there is no sync. Editing the live source (e.g. `/etc/...`) leaves the repo stale and `git status` clean, so drift is invisible. To update one: re-copy the source over the repo path by hand (`sudo cp /etc/systemd/zram-generator.conf system-config/system/systemd/zram-generator.conf`), preserving the mirrored layout (`/etc/foo/bar` → `system-config/system/foo/bar`), then `git add` + commit. If you edit the repo copy instead, remember to `sudo cp` it back to the live path — the running system reads the original, not the snapshot.
 

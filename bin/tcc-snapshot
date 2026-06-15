@@ -1,0 +1,28 @@
+#!/bin/sh
+# Re-snapshot the live TUXEDO Control Center config into the nunux repo.
+# /etc/tcc/{settings,profiles} are root-owned but world-readable, so a plain cp
+# as the repo owner keeps the tracked copies user-owned (the pacman hook su's to
+# kannar for exactly this reason — see pkglist-refresh).
+#
+# One-way snapshot like the rest of system-config/: this only rewrites the
+# working-tree files; you still commit the diff by hand. Drift in /etc/tcc comes
+# from the TCC GUI (profile renames, charge/fan changes), NOT from packages, so
+# the hook merely sweeps it up opportunistically on each pacman transaction.
+set -eu
+
+repo="$(cd "$(dirname "$0")/.." && pwd)"
+dest="$repo/system-config/system/tcc"
+mkdir -p "$dest"
+
+for f in settings profiles; do
+	src="/etc/tcc/$f"
+	[ -r "$src" ] || continue
+	# temp + rename so a partial copy can't truncate the tracked snapshot.
+	tmp="$(mktemp)"
+	if cp "$src" "$tmp"; then
+		chmod 644 "$tmp"
+		mv "$tmp" "$dest/$f"
+	else
+		rm -f "$tmp"
+	fi
+done
