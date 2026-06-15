@@ -175,7 +175,7 @@
         "format-charging": "{capacity}% ",
         "format-plugged": "{capacity}% ",
         "format-alt": "{time} {icon}",
-        "on-click": "/home/kannar/git/kannar/nunux/bin/tcc-profile",
+        "on-click": "/home/kannar/git/kannar/nunux/bin/charge-profile",
         // "format-good": "", // An empty format will hide the module
         // "format-full": "",
         "format-icons": ["", "", "", "", ""]

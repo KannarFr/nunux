@@ -1,0 +1,40 @@
+#!/bin/sh
+# bemenu picker for the TUXEDO battery charging profile. Talks to tccd over the
+# system bus (no root needed — same interface the GUI / bin/tcc-profile use).
+# Unlike tcc-profile (perf/fan profiles), this sets the charge ceiling. tccd
+# persists the choice in /etc/tcc/settings and re-applies it on boot.
+#
+# This model (InfinityBook Pro AMD Gen10) has no numeric end-threshold
+# (GetChargeEndAvailableThresholds is empty); only the three named profiles
+# below work. The active one is marked and pre-selected.
+
+bus="com.tuxedocomputers.tccd"
+obj="/com/tuxedocomputers/tccd"
+
+# busctl prints: s "<json-with-escaped-quotes>"; strip the 's ' tag, then let
+# jq decode the JSON-string token into the raw inner value.
+call() {
+	busctl --system call "$bus" "$obj" "$bus" "$1" 2>/dev/null \
+		| sed 's/^s //' | jq -r '.'
+}
+
+active=$(call GetCurrentChargingProfile)
+
+# Per-profile nerd-font glyph + human label with the approximate charge cap.
+# Keyed by profile id (high_capacity / balanced / stationary).
+icons='{"high_capacity":"󰁹","balanced":"󰁾","stationary":"󰁻"}'
+labels='{"high_capacity":"Full (100%)","balanced":"Balanced (~80%)","stationary":"Stationary (~60%)"}'
+
+# id<TAB>icon label for every available profile; mark active.
+menu=$(call GetChargingProfilesAvailable | jq -r \
+	--arg a "$active" --argjson ic "$icons" --argjson lb "$labels" \
+	'.[] | "\(.)\t\(if . == $a then "● " else "  " end)\($ic[.] // " ") \($lb[.] // .)"')
+
+chosen=$(printf '%s\n' "$menu" | cut -f2- \
+	| bemenu -l 10 -H 30 --fn "JetBrainsMono Nerd Font 11" -p charge)
+[ -n "$chosen" ] || exit 0
+
+id=$(printf '%s\n' "$menu" | awk -F'\t' -v d="$chosen" '$2==d{print $1; exit}')
+[ -n "$id" ] || exit 0
+
+busctl --system call "$bus" "$obj" "$bus" SetChargingProfile s "$id" >/dev/null
