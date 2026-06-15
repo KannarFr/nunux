@@ -10,7 +10,6 @@ neofetch
 nitrogen
 piper-tts-bin
 slack-desktop
-stripe-cli
 vban-git
 visual-studio-code-bin
 yay
