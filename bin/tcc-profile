@@ -19,7 +19,7 @@ active=$(call GetActiveProfileJSON | jq -r '.id')
 
 # Per-profile nerd-font glyphs (literal UTF-8 — this is /bin/sh, no $'\U' escapes).
 # Keyed by name; must stay in sync with the case in config/waybar/fan.sh.
-icons='{"Performance":"󰓅","Balanced":"󰗑","Silent":"󰛚","Powersave":"󰌪"}'
+icons='{"Full perf":"󰓅","Balanced":"󰗑","Cool and breezy":"󰹣","Powersave extreme":"󰌪"}'
 
 # id<TAB>icon name for every custom profile (skips the read-only built-ins); mark active.
 menu=$(call GetCustomProfilesJSON | jq -r --arg a "$active" --argjson ic "$icons" \

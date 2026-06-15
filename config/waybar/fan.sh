@@ -23,11 +23,11 @@ call() {
 # applied right now. Matched by profile name (see tcc-profile / GetCustomProfilesJSON).
 prof=$(call GetActiveProfileJSON | jq -r '.name // empty')
 case "$prof" in
-    Performance) PICON=$'\U000F04C5' ;;  # nf-md-speedometer
-    Balanced)    PICON=$'\U000F05D1' ;;  # nf-md-scale_balance
-    Silent)      PICON=$'\U000F06DA' ;;  # nf-md-feather
-    Powersave)   PICON=$'\U000F032A' ;;  # nf-md-leaf
-    *)           PICON=$'\U000F0210' ;;  # unknown profile → fan glyph
+    "Full perf")         PICON=$'\U000F04C5' ;;  # nf-md-speedometer
+    Balanced)            PICON=$'\U000F05D1' ;;  # nf-md-scale_balance
+    "Cool and breezy")   PICON=$'\U000F0E63' ;;  # nf-md-weather_windy
+    "Powersave extreme") PICON=$'\U000F032A' ;;  # nf-md-leaf
+    *)                   PICON=$'\U000F0210' ;;  # unknown profile → fan glyph
 esac
 
 unknown() { jq -cn --arg t "$PICON --" --arg tt "$1" '{text:$t,tooltip:$tt,class:"fan-unknown"}'; exit 0; }
