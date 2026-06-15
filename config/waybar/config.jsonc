@@ -30,6 +30,7 @@
         "keyboard-state",
         "battery",
         "battery#bat2",
+        "custom/power-draw",
         "clock",
         "tray",
         "custom/power"
@@ -178,6 +179,13 @@
     },
     "battery#bat2": {
         "bat": "BAT2"
+    },
+    "custom/power-draw": {
+        "exec": "$HOME/.config/waybar/power.sh",
+        "return-type": "json",
+        "interval": 5,
+        "format": "{}",
+        "tooltip": true
     },
     "power-profiles-daemon": {
       "format": "{icon}",

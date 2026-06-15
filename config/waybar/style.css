@@ -95,6 +95,7 @@ button:hover {
 #mpd,
 #custom-cpu-load,
 #custom-cpu-temp,
+#custom-power-draw,
 #custom-vpn,
 #language,
 #keyboard-state {
@@ -209,6 +210,9 @@ label:focus {
 #custom-cpu-temp.t-warm { background-color: #b8a020; }
 #custom-cpu-temp.t-hot  { background-color: #cc6a1a; }
 #custom-cpu-temp.t-crit { background-color: #c83232; }
+
+#custom-power-draw.charging    { background-color: #26A65B; }
+#custom-power-draw.discharging { background-color: #b8a020; }
 
 #memory          { background-color: #3a8a3a; }
 #memory.warning  { background-color: #cc6a1a; }
