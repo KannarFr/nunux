@@ -7,13 +7,14 @@
 DEG=$'°'
 
 find_pkg_temp() {
-    local h lbl name label
+    local h lbl name label want
+    # Intel exposes coretemp/"Package id 0"; AMD exposes k10temp/"Tctl".
     for h in /sys/class/hwmon/hwmon*; do
         read -r name < "$h/name" 2>/dev/null || continue
-        [ "$name" = coretemp ] || continue
+        case "$name" in coretemp) want="Package id 0";; k10temp) want=Tctl;; *) continue;; esac
         for lbl in "$h"/temp*_label; do
             read -r label < "$lbl" 2>/dev/null || continue
-            [ "$label" = "Package id 0" ] || continue
+            [ "$label" = "$want" ] || continue
             echo "${lbl%_label}_input"; return 0
         done
     done
