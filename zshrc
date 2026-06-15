@@ -52,6 +52,12 @@ if [[ -n $WAYLAND_DISPLAY && ! -S $XDG_RUNTIME_DIR/$WAYLAND_DISPLAY ]]; then
         break
     done
 fi
+# Fallback: locate the sway IPC socket for shells not started from within the
+# session (otherwise swaymsg fails with "Unable to retrieve socket path").
+if [[ -z $SWAYSOCK ]]; then
+    sock=($XDG_RUNTIME_DIR/sway-ipc.*(N=))
+    (( $#sock )) && export SWAYSOCK=$sock[1]
+fi
 gpg-connect-agent updatestartuptty /bye >/dev/null
 
 # Add RVM to PATH for scripting. Make sure this is the last PATH variable change.
