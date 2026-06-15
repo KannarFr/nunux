@@ -1,8 +1,8 @@
 [Default Applications]
 x-scheme-handler/jetbrains=jetbrains-toolbox.desktop
-x-scheme-handler/mailto=userapp-Thunderbird-0ZTHV2.desktop
-message/rfc822=userapp-Thunderbird-0ZTHV2.desktop
-x-scheme-handler/mid=userapp-Thunderbird-0ZTHV2.desktop
+x-scheme-handler/mailto=userapp-Thunderbird-NNKUQ3.desktop
+message/rfc822=userapp-Thunderbird-NNKUQ3.desktop
+x-scheme-handler/mid=userapp-Thunderbird-NNKUQ3.desktop
 x-scheme-handler/news=userapp-Thunderbird-4NHGV2.desktop
 x-scheme-handler/snews=userapp-Thunderbird-4NHGV2.desktop
 x-scheme-handler/nntp=userapp-Thunderbird-4NHGV2.desktop
@@ -22,8 +22,8 @@ x-scheme-handler/claude-cli=claude-code-url-handler.desktop
 x-scheme-handler/slack=slack.desktop
 
 [Added Associations]
-x-scheme-handler/mailto=userapp-Thunderbird-0ZTHV2.desktop;
-x-scheme-handler/mid=userapp-Thunderbird-0ZTHV2.desktop;
+x-scheme-handler/mailto=userapp-Thunderbird-NNKUQ3.desktop;userapp-Thunderbird-0ZTHV2.desktop;
+x-scheme-handler/mid=userapp-Thunderbird-NNKUQ3.desktop;userapp-Thunderbird-0ZTHV2.desktop;
 x-scheme-handler/news=userapp-Thunderbird-4NHGV2.desktop;
 x-scheme-handler/snews=userapp-Thunderbird-4NHGV2.desktop;
 x-scheme-handler/nntp=userapp-Thunderbird-4NHGV2.desktop;

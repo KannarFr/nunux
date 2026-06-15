@@ -41,7 +41,9 @@ highlight ColorColumn ctermbg=0 guibg=lightgrey
 call vundle#begin()
 
 Plugin 'VundleVim/Vundle.vim'
-Plugin 'neoclide/coc.nvim', {'branch': 'release'}
+" pinned so Vundle never resets the checkout; the release branch ships a
+" prebuilt build/index.js (no npm build). bootstrap.sh clones that branch.
+Plugin 'neoclide/coc.nvim', {'pinned': 1}
 Plugin 'tweekmonster/gofmt.vim'
 Plugin 'tpope/vim-fugitive'
 Plugin 'vim-utils/vim-man'

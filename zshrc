@@ -34,7 +34,8 @@ source /etc/profile
 stty start undef stop undef
 
 # autosuggest
-source ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
+[[ -r /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]] && \
+    source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 
 # Setup GPG env
 unset SSH_AGENT_PID
@@ -42,6 +43,15 @@ if [ "${gnupg_SSH_AUTH_SOCK_by:-0}" -ne $$ ]; then
     export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR}/gnupg/S.gpg-agent.ssh"
 fi
 export GPG_TTY=$(tty)
+# Heal a stale WAYLAND_DISPLAY (e.g. terminal that outlived a sway restart)
+# before handing it to gpg-agent, so the graphical pinentry (bemenu) targets
+# the live compositor socket instead of a dead one.
+if [[ -n $WAYLAND_DISPLAY && ! -S $XDG_RUNTIME_DIR/$WAYLAND_DISPLAY ]]; then
+    for sock in $XDG_RUNTIME_DIR/wayland-*(N=); do
+        export WAYLAND_DISPLAY=${sock:t}
+        break
+    done
+fi
 gpg-connect-agent updatestartuptty /bye >/dev/null
 
 # Add RVM to PATH for scripting. Make sure this is the last PATH variable change.

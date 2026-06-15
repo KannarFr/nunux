@@ -45,5 +45,6 @@
     "stripe@claude-plugins-official": true
   },
   "skipWorkflowUsageWarning": true,
+  "theme": "auto",
   "agentPushNotifEnabled": true
 }

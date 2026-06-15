@@ -96,6 +96,7 @@ button:hover {
 #custom-cpu-load,
 #custom-cpu-temp,
 #custom-fan,
+#custom-power-draw,
 #custom-vpn,
 #language {
     padding: 0 10px;
@@ -214,6 +215,9 @@ label:focus {
 #custom-fan.fan-mid     { background-color: #b8a020; }
 #custom-fan.fan-loud    { background-color: #cc6a1a; }
 #custom-fan.fan-unknown { background-color: #4b5563; }
+
+#custom-power-draw.charging    { background-color: #26A65B; }
+#custom-power-draw.discharging { background-color: #b8a020; }
 
 #memory          { background-color: #3a8a3a; }
 #memory.warning  { background-color: #cc6a1a; }
