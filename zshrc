@@ -206,9 +206,14 @@ esac
   # Android SDK
   export ANDROID_HOME=$HOME/Android/Sdk
   export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools:$PATH"
-command -v mise >/dev/null && eval "$(mise activate zsh)"
-
-# Use the latest stable JDK (tracks the archlinux-java default symlink).
-# myle-mobile pins JDK 17 locally via its mise.local.toml (Gradle 9 can't parse Java 26 classfiles).
+# Default JDK = archlinux-java default symlink (latest stable). Set BEFORE
+# `mise activate` so mise's per-directory hook is the last writer: its JDK-17
+# pin (myle-mobile/mise.local.toml — Gradle 9 can't parse Java 26 classfiles)
+# then wins even in a shell started inside the project.
 export JAVA_HOME=/usr/lib/jvm/default
-export PATH="$JAVA_HOME/bin:$PATH"
+case ":$PATH:" in
+  *":$JAVA_HOME/bin:"*) ;;
+  *) export PATH="$JAVA_HOME/bin:$PATH" ;;
+esac
+
+command -v mise >/dev/null && eval "$(mise activate zsh)"
