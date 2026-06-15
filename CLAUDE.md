@@ -44,7 +44,7 @@ Snapshots / not symlinked (read-only references; do not assume edits here propag
 | `paludis-config/*` | `/etc/paludis/*` — Paludis is the Exherbo package manager. Current host is Arch, so this dir is likely archival from a prior install. |
 | `kernelconfig` | `/usr/src/linux/.config` — kernel build snapshot |
 | `mtmux`, `doc/` | utility script + ad-hoc notes; live where they are |
-| `bin/*` | helper scripts (`osd`, `battery-watch`, `powermenu`, `restic-backup`, `migrate-home`, `pkglist-refresh`) referenced by absolute path (sway's `set $bin`, systemd units, pacman hook) — not symlinked, not on `$PATH` |
+| `bin/*` | helper scripts (`osd`, `battery-watch`, `powermenu`, `restic-backup`, `migrate-home`, `pkglist-refresh`, `tcc-profile`, `charge-profile`) referenced by absolute path (sway's `set $bin`, systemd units, pacman hook, waybar `on-click`) — not symlinked, not on `$PATH` |
 | `system-config/pkglist-pacman.txt`, `system-config/pkglist-aur.txt` | `pacman -Qqen` / `pacman -Qqem` — explicit packages (official / AUR), for rebuilding a machine |
 | `system-config/system/pacman.d/hooks/*` | `/etc/pacman.d/hooks/*` — pacman hooks (e.g. auto-refresh of the package lists) |
 
@@ -91,6 +91,7 @@ If the file may contain secrets, also `git update-index --skip-worktree <path>` 
 - **`gitconfig` has URL rewrites**: `clever:foo/bar` → Clever Cloud GitLab, `github:foo/bar` → GitHub over SSH. Preserve these when editing.
 - **`zshrc` is the source of truth for the interactive shell**, `bashrc` is minimal — most aliases/exports go in `zshrc`. The prompt itself comes from `starship.toml` (zshrc only does `eval "$(starship init zsh)"`).
 - **`mtmux`** opens a tiled tmux window with synchronized SSH sessions to every host listed in its argument file, **as root**. Treat changes as security-sensitive.
+- **TUXEDO control: two `bemenu` pickers, two waybar tiles.** `bin/tcc-profile` switches the *perf/fan* profile (a live temp override via tccd's `SetTempProfileById`, reverts on reboot/AC change) and is the **fan** tile's `on-click`; `bin/charge-profile` switches the *battery charge* profile (`SetChargingProfile`, persisted by tccd in `/etc/tcc/settings`) and is the **battery** tile's `on-click`. Both talk to `tccd` over the system bus (no root). The charge profiles are **named presets, not a numeric %** — this hardware (InfinityBook Pro AMD Gen10) exposes only `high_capacity`/`balanced`/`stationary` (≈100/80/60%); `balanced` is the longevity setting. The perf-profile *names* are hardcoded in three places that must stay in sync: `tcc-profile`'s `icons`, `fan.sh`'s `case`, and the live `/etc/tcc/profiles` (renaming a profile in the TCC GUI means updating both scripts **and** re-snapshotting `system-config/system/tcc/profiles`).
 - **`claude/statusline.sh`** reads JSON from stdin (Claude Code passes session info this way), uses `jq`, emits ANSI single-line output. Context-bar thresholds: `<50` green, `<80` yellow, else red. It's wired in via `claude/settings.json` (`statusLine.command`).
 - **`claude/commands/*.md`** are user-level slash commands (`/commit`, `/mr`, `/pr`, `/review`, etc.); **`claude/agents/*.md`** are user-level subagents. New ones can be added by dropping a markdown file in the right dir — the symlink makes it live immediately.
 
