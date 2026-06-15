@@ -1,0 +1,14 @@
+[Unit]
+Description=Watch /etc/tcc and snapshot it into the nunux repo on change
+ConditionPathExists=/etc/tcc
+
+[Path]
+# TCC drift comes from GUI edits (profile rename, charge/fan changes), which
+# rewrite these two files. PathChanged fires once the writer closes the file;
+# systemd re-arms the watch across atomic rename-replace. Activates the
+# same-named .service (tcc-snapshot.service).
+PathChanged=/etc/tcc/settings
+PathChanged=/etc/tcc/profiles
+
+[Install]
+WantedBy=paths.target

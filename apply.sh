@@ -50,6 +50,8 @@ MAP=(
   "config/wireplumber/wireplumber.conf.d/51-bluez.conf  $HOME/.config/wireplumber/wireplumber.conf.d/51-bluez.conf"
   "config/systemd/user/restic-backup.service  $HOME/.config/systemd/user/restic-backup.service"
   "config/systemd/user/restic-backup.timer    $HOME/.config/systemd/user/restic-backup.timer"
+  "config/systemd/user/tcc-snapshot.service   $HOME/.config/systemd/user/tcc-snapshot.service"
+  "config/systemd/user/tcc-snapshot.path      $HOME/.config/systemd/user/tcc-snapshot.path"
   "claude/statusline.sh    $HOME/.claude/statusline.sh"
   "claude/settings.json    $HOME/.claude/settings.json"
   "claude/commands         $HOME/.claude/commands"

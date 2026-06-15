@@ -1,0 +1,9 @@
+[Unit]
+Description=Snapshot /etc/tcc into the nunux repo
+# Skip quietly if the live config is absent (non-TUXEDO host).
+ConditionPathExists=/etc/tcc
+
+[Service]
+Type=oneshot
+Nice=10
+ExecStart=%h/git/kannar/nunux/bin/tcc-snapshot
