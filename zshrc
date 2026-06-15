@@ -34,7 +34,8 @@ source /etc/profile
 stty start undef stop undef
 
 # autosuggest
-source ~/.zsh/zsh-autosuggestions/zsh-autosuggestions.zsh
+[[ -r /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh ]] && \
+    source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
 
 # Setup GPG env
 unset SSH_AGENT_PID
