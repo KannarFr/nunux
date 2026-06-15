@@ -145,6 +145,11 @@ fi
 say "Vim plugins (Vundle)"
 vundle="$HOME/.vim/bundle/Vundle.vim"
 [ -d "$vundle" ] || git clone https://github.com/VundleVim/Vundle.vim.git "$vundle"
+# coc.nvim is pinned in vimrc (Vundle skips it), so clone its release branch
+# by hand — it ships a prebuilt build/index.js, no npm build needed.
+coc="$HOME/.vim/bundle/coc.nvim"
+[ -d "$coc" ] || git clone --depth 1 --branch release \
+  https://github.com/neoclide/coc.nvim.git "$coc"
 vim +PluginInstall +qall </dev/null >/dev/null 2>&1 && echo "  plugins installed" \
   || warn "run ':PluginInstall' inside vim by hand"
 
