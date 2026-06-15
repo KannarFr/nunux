@@ -1,8 +1,127 @@
 [
   {
+    "id": "tcc-full-perf",
+    "name": "Full perf",
+    "description": "managed by dotfiles waybar fan picker",
+    "display": {
+      "brightness": 100,
+      "useBrightness": false,
+      "refreshRate": -1,
+      "useRefRate": false,
+      "xResolution": -1,
+      "yResolution": -1,
+      "useResolution": false
+    },
+    "cpu": {
+      "useMaxPerfGov": true,
+      "governor": "performance",
+      "energyPerformancePreference": "performance",
+      "noTurbo": false,
+      "onlineCores": 24,
+      "scalingMinFrequency": 605264,
+      "scalingMaxFrequency": 5157895
+    },
+    "webcam": {
+      "status": true,
+      "useStatus": true
+    },
+    "fan": {
+      "useControl": true,
+      "fanProfile": "Cool",
+      "minimumFanspeed": 0,
+      "maximumFanspeed": 100,
+      "offsetFanspeed": 0,
+      "customFanCurve": {
+        "tableCPU": [
+          {
+            "temp": 20,
+            "speed": 12
+          },
+          {
+            "temp": 30,
+            "speed": 14
+          },
+          {
+            "temp": 40,
+            "speed": 22
+          },
+          {
+            "temp": 50,
+            "speed": 35
+          },
+          {
+            "temp": 60,
+            "speed": 44
+          },
+          {
+            "temp": 70,
+            "speed": 56
+          },
+          {
+            "temp": 80,
+            "speed": 79
+          },
+          {
+            "temp": 90,
+            "speed": 85
+          },
+          {
+            "temp": 100,
+            "speed": 90
+          }
+        ],
+        "tableGPU": [
+          {
+            "temp": 20,
+            "speed": 12
+          },
+          {
+            "temp": 30,
+            "speed": 14
+          },
+          {
+            "temp": 40,
+            "speed": 22
+          },
+          {
+            "temp": 50,
+            "speed": 35
+          },
+          {
+            "temp": 60,
+            "speed": 44
+          },
+          {
+            "temp": 70,
+            "speed": 56
+          },
+          {
+            "temp": 80,
+            "speed": 79
+          },
+          {
+            "temp": 90,
+            "speed": 85
+          },
+          {
+            "temp": 100,
+            "speed": 90
+          }
+        ]
+      }
+    },
+    "odmProfile": {},
+    "odmPowerLimits": {
+      "tdpValues": []
+    },
+    "nvidiaPowerCTRLProfile": {
+      "cTGPOffset": 0
+    }
+  },
+  {
     "id": "__default_custom_profile__",
-    "name": "Performance",
-    "description": "Full speed - uncapped, turbo on",
+    "name": "Balanced",
+    "description": "managed by dotfiles waybar fan picker",
     "display": {
       "brightness": 100,
       "useBrightness": false,
@@ -17,9 +136,9 @@
       "governor": "powersave",
       "energyPerformancePreference": "balance_performance",
       "noTurbo": false,
-      "onlineCores": 22,
-      "scalingMinFrequency": 400000,
-      "scalingMaxFrequency": 4800000
+      "onlineCores": 24,
+      "scalingMinFrequency": 605264,
+      "scalingMaxFrequency": 5157895
     },
     "webcam": {
       "status": true,
@@ -110,9 +229,7 @@
         ]
       }
     },
-    "odmProfile": {
-      "name": "overboost"
-    },
+    "odmProfile": {},
     "odmPowerLimits": {
       "tdpValues": []
     },
@@ -121,9 +238,9 @@
     }
   },
   {
-    "id": "2e26af35-922e-457e-89bd-0dc386b2817d",
-    "name": "Balanced",
-    "description": "Daily driver - capped 3 GHz, quiet",
+    "id": "tcc-cool-breezy",
+    "name": "Cool and breezy",
+    "description": "managed by dotfiles waybar fan picker",
     "display": {
       "brightness": 100,
       "useBrightness": false,
@@ -136,11 +253,11 @@
     "cpu": {
       "useMaxPerfGov": false,
       "governor": "powersave",
-      "energyPerformancePreference": "balance_power",
+      "energyPerformancePreference": "balance_performance",
       "noTurbo": false,
-      "onlineCores": 22,
-      "scalingMinFrequency": 400000,
-      "scalingMaxFrequency": 3000000
+      "onlineCores": 24,
+      "scalingMinFrequency": 605264,
+      "scalingMaxFrequency": 2578948
     },
     "webcam": {
       "status": true,
@@ -231,9 +348,7 @@
         ]
       }
     },
-    "odmProfile": {
-      "name": "overboost"
-    },
+    "odmProfile": {},
     "odmPowerLimits": {
       "tdpValues": []
     },
@@ -242,130 +357,9 @@
     }
   },
   {
-    "id": "296bb329-0e10-4fb9-ab53-89e78428ea7d",
-    "name": "Silent",
-    "description": "Light use / battery - capped 1.8 GHz, inaudible",
-    "display": {
-      "brightness": 100,
-      "useBrightness": false,
-      "refreshRate": -1,
-      "useRefRate": false,
-      "xResolution": -1,
-      "yResolution": -1,
-      "useResolution": false
-    },
-    "cpu": {
-      "useMaxPerfGov": false,
-      "governor": "powersave",
-      "energyPerformancePreference": "power",
-      "noTurbo": false,
-      "onlineCores": 22,
-      "scalingMinFrequency": 400000,
-      "scalingMaxFrequency": 1800000
-    },
-    "webcam": {
-      "status": true,
-      "useStatus": true
-    },
-    "fan": {
-      "useControl": true,
-      "fanProfile": "Silent",
-      "minimumFanspeed": 0,
-      "maximumFanspeed": 100,
-      "offsetFanspeed": 0,
-      "customFanCurve": {
-        "tableCPU": [
-          {
-            "temp": 20,
-            "speed": 12
-          },
-          {
-            "temp": 30,
-            "speed": 14
-          },
-          {
-            "temp": 40,
-            "speed": 22
-          },
-          {
-            "temp": 50,
-            "speed": 35
-          },
-          {
-            "temp": 60,
-            "speed": 44
-          },
-          {
-            "temp": 70,
-            "speed": 56
-          },
-          {
-            "temp": 80,
-            "speed": 79
-          },
-          {
-            "temp": 90,
-            "speed": 85
-          },
-          {
-            "temp": 100,
-            "speed": 90
-          }
-        ],
-        "tableGPU": [
-          {
-            "temp": 20,
-            "speed": 12
-          },
-          {
-            "temp": 30,
-            "speed": 14
-          },
-          {
-            "temp": 40,
-            "speed": 22
-          },
-          {
-            "temp": 50,
-            "speed": 35
-          },
-          {
-            "temp": 60,
-            "speed": 44
-          },
-          {
-            "temp": 70,
-            "speed": 56
-          },
-          {
-            "temp": 80,
-            "speed": 79
-          },
-          {
-            "temp": 90,
-            "speed": 85
-          },
-          {
-            "temp": 100,
-            "speed": 90
-          }
-        ]
-      }
-    },
-    "odmProfile": {
-      "name": "overboost"
-    },
-    "odmPowerLimits": {
-      "tdpValues": []
-    },
-    "nvidiaPowerCTRLProfile": {
-      "cTGPOffset": 0
-    }
-  },
-  {
-    "id": "66dd1e6d-bb69-4f5a-bcff-a4a9461e6352",
-    "name": "Powersave",
-    "description": "Extreme battery - capped 1 GHz, turbo off",
+    "id": "tcc-powersave-extreme",
+    "name": "Powersave extreme",
+    "description": "managed by dotfiles waybar fan picker",
     "display": {
       "brightness": 100,
       "useBrightness": false,
@@ -380,9 +374,9 @@
       "governor": "powersave",
       "energyPerformancePreference": "power",
       "noTurbo": true,
-      "onlineCores": 22,
-      "scalingMinFrequency": 400000,
-      "scalingMaxFrequency": 1000000
+      "onlineCores": 24,
+      "scalingMinFrequency": 605264,
+      "scalingMaxFrequency": 605264
     },
     "webcam": {
       "status": true,
@@ -473,9 +467,7 @@
         ]
       }
     },
-    "odmProfile": {
-      "name": "overboost"
-    },
+    "odmProfile": {},
     "odmPowerLimits": {
       "tdpValues": []
     },
