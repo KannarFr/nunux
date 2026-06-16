@@ -1,6 +1,7 @@
 7zip
 accountsservice
 alsa-utils
+amd-ucode
 ansible
 appstream-glib
 base
@@ -11,6 +12,7 @@ bluez
 bluez-utils
 borg
 brightnessctl
+btrfs-progs
 cargo-sweep
 chromaprint
 chromium
@@ -28,10 +30,10 @@ dog
 dolphin
 dpkg
 efibootmgr
-efivar
 eigen
 element-desktop
 ex-vi-compat
+fastfetch
 fd
 firefox
 firewalld
@@ -80,6 +82,7 @@ linux-firmware
 linux-headers
 lshw
 lsof
+lvm2
 man-db
 maven
 mise
@@ -102,6 +105,7 @@ pass
 pavucontrol
 pinentry-bemenu
 pipewire
+pipewire-alsa
 pnpm
 postgresql
 protobuf
@@ -114,18 +118,18 @@ qpdf
 ranger
 reflector
 remmina
-restic
 rofi
-rsync
 ruby
 rust
 rxvt-unicode
 s3cmd
 sbt
 seahorse
+snapper
 spotify-launcher
 starship
 strace
+sudo
 sway
 sway-contrib
 swaybg
@@ -228,3 +232,4 @@ zed
 zip
 zram-generator
 zsh
+zsh-autosuggestions
