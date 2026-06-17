@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# gpg-sign-glow — thin gpg wrapper that flashes the yubikey-glow rainbow when
+# git asks gpg to *create* a signature, then execs the real gpg unchanged.
+#
+# Wired in via git's `gpg.program`. git signs with "-bsau <key>" and verifies
+# with "--verify"; we pulse only on the former, so verification (git log
+# --show-signature, pulling signed commits) doesn't light up the screen.
+#
+# The commit-signing key lives on disk and needs no YubiKey touch, so
+# yubikey-touch-detector never fires for it — this gives commit/tag signing the
+# same visual confirmation anyway, by SIGUSR1'ing the running glow daemon.
+
+signing=
+verify=
+for a in "$@"; do
+  case $a in
+    --verify)                          verify=1 ;;
+    --sign|--detach-sign|--clearsign)  signing=1 ;;
+    -[!-]*s*)                          signing=1 ;;  # bundled short flags incl. 's' (git: -bsau)
+  esac
+done
+
+if [ -n "$signing" ] && [ -z "$verify" ]; then
+  pid=$(cat "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/yubikey-glow.pid" 2>/dev/null)
+  # Confirm the PID is actually the glow daemon before signalling: a stale
+  # pidfile (daemon crashed, PID recycled) would otherwise SIGUSR1 — whose
+  # default action is Term — an unrelated process. cmdline is NUL-separated.
+  if [ -n "$pid" ] && tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | grep -q yubikey-glow; then
+    kill -USR1 "$pid" 2>/dev/null
+  fi
+fi
+
+exec gpg "$@"

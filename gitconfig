@@ -20,7 +20,7 @@
 	gpgsign = true
 
 [gpg]
-	program = gpg
+	program = /home/kannar/git/kannar/nunux/bin/gpg-sign-glow
 
 [alias]
 	co-pr = !sh -c 'git fetch origin pull/$1/head:pr/$1 && git checkout pr/$1' -

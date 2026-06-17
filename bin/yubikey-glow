@@ -21,8 +21,10 @@
 import os
 import re
 import sys
+import atexit
 import math
 import time
+import signal
 import socket
 import colorsys
 import threading
@@ -50,6 +52,14 @@ SOCK_PATH = os.path.join(
 )
 MSG_RE = re.compile(rb"(GPG|U2F|HMAC|CHALLENGE)_(0|1)")
 
+# A pidfile so external triggers (e.g. the gpg-sign-glow wrapper) can SIGUSR1
+# the running daemon to pulse the glow for events that never touch the YubiKey.
+PID_PATH = os.path.join(
+    os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"),
+    "yubikey-glow.pid",
+)
+PULSE_MS = 1500   # one-shot glow length for non-touch events (commit signing)
+
 
 class GlowManager:
     def __init__(self):
@@ -59,6 +69,7 @@ class GlowManager:
         self.phase = 0.0           # hue rotation phase
         self.pulse = 0.0           # breathing phase
         self.timer = 0             # animation timeout source id
+        self.pulse_timer = 0       # one-shot pulse expiry source id
         self.stops = []            # rainbow color stops, recomputed once per tick
 
         self.display = Gdk.Display.get_default()
@@ -143,6 +154,26 @@ class GlowManager:
     def clear(self):
         self.active_sources.clear()
         self.set_active(False)
+        return False
+
+    # -- one-shot pulse for events without a touch (e.g. commit signing) ------
+    # (named flash(), not pulse(): self.pulse is the breathing-phase float)
+    def flash(self, ms=PULSE_MS):
+        # Reuse the same activation path as a real touch by parking a synthetic
+        # "PULSE" source, then dropping it after `ms`. An overlapping real touch
+        # keeps the glow up past expiry (set_active only hides with no sources
+        # left); a fresh pulse just restarts the timer.
+        self.active_sources.add("PULSE")
+        self.set_active(True)
+        if self.pulse_timer:
+            GLib.source_remove(self.pulse_timer)
+        self.pulse_timer = GLib.timeout_add(ms, self._end_pulse)
+        return False  # usable as a GLib signal/idle callback
+
+    def _end_pulse(self):
+        self.pulse_timer = 0
+        self.active_sources.discard("PULSE")
+        self.set_active(bool(self.active_sources))
         return False
 
 
@@ -291,6 +322,26 @@ def main():
         # add() (ms), not add_seconds(), so sub-second previews aren't floored to 0
         GLib.timeout_add(int(secs * 1000), Gtk.main_quit)
     else:
+        # SIGUSR1 => pulse the glow once (the gpg-sign-glow wrapper sends this
+        # when git creates a signature with an on-disk key — no YubiKey touch,
+        # so the detector socket never reports it).
+        GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGUSR1,
+                             lambda *_: mgr.flash() or True)
+        # Route SIGTERM/SIGINT through Gtk.main_quit so main() returns and the
+        # atexit pidfile cleanup runs — Python's default SIGTERM exit skips
+        # atexit, which would otherwise leave the pidfile stale on every stop.
+        for _sig in (signal.SIGTERM, signal.SIGINT):
+            GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, _sig,
+                                 lambda *_: Gtk.main_quit() or True)
+        try:
+            with open(PID_PATH, "w") as f:
+                f.write(str(os.getpid()))
+            # Remove on exit so a crashed/killed daemon can't leave a stale PID
+            # that the gpg-sign-glow wrapper later SIGUSR1's after the kernel
+            # recycles it onto an unrelated process.
+            atexit.register(lambda: os.path.exists(PID_PATH) and os.unlink(PID_PATH))
+        except OSError:
+            pass
         t = threading.Thread(target=socket_listener, args=(mgr,), daemon=True)
         t.start()
 
