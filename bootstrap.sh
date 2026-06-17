@@ -181,6 +181,11 @@ cat <<'EOF'
 
   [ ] GPG key: import your secret key (git signs commits by default), e.g.
       gpg --import < key.asc
+      gitconfig's gpg.program is an ABSOLUTE path to bin/gpg-sign-glow (the
+      glow-on-sign wrapper). If this repo lives anywhere other than
+      /home/kannar/git/kannar/nunux, repoint it or signing fails on every
+      commit: git config --global gpg.program "$PWD/bin/gpg-sign-glow"
+      (or set it back to plain 'gpg' to drop the glow).
 
   [ ] SSH keys: restore ~/.ssh/ keys — git pushes over SSH (github:/clever: rewrites).
 
