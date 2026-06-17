@@ -157,12 +157,21 @@ class GlowWindow(Gtk.Window):
         self.area.connect("draw", self._draw)
         self.add(self.area)
 
+        # The empty input region must be re-applied after the compositor sizes
+        # the layer surface to fill the monitor: that resize reallocates the
+        # GdkWindow and otherwise resets the input shape to the full surface,
+        # turning this overlay into a full-screen click sink. Re-apply on every
+        # realize/map/size-allocate.
         self.connect("realize", self._make_click_through)
+        self.connect("map", self._make_click_through)
+        self.connect("size-allocate", self._make_click_through)
         self.show_all()
 
     def _make_click_through(self, *_):
         # empty input region => all pointer/touch events pass straight through
-        self.get_window().input_shape_combine_region(cairo.Region(), 0, 0)
+        win = self.get_window()
+        if win is not None:
+            win.input_shape_combine_region(cairo.Region(), 0, 0)
 
     def _edge_masks(self, w, h):
         # (clip rect, inward-falloff mask) per edge — geometry only depends on
