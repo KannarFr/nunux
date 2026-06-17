@@ -5,3 +5,7 @@
 npmrc
 wgetpaste.conf
 zprofile
+
+# Generated Python bytecode (e.g. from bin/yubikey-glow)
+__pycache__/
+*.pyc

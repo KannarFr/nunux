@@ -29,6 +29,9 @@ exec swayidle -w \
           timeout 3900 'swaymsg "output * power off"' resume 'swaymsg "output * power on"' \
           before-sleep 'swaylock -f -c 000000'
 exec $bin/battery-watch
+# yubikey-glow: rainbow screen-edge glow while an OpenPGP/YubiKey touch is pending
+# (reads yubikey-touch-detector's socket; detector runs as a user service)
+exec $bin/yubikey-glow
 exec foot --app-id=dropdown
 
 # Default config for sway
@@ -133,6 +136,12 @@ output eDP-1 scale 1.4
     # don't fire under native-Wayland focus on sway.
     bindsym $mod+m exec handy --toggle-transcription
     bindsym $mod+Shift+m exec handy --cancel
+
+    # Friendly: open a text box AND auto-start Handy dictation into it, then pick
+    # a tone, rewrite, and copy the result. Tap $mod+m to stop dictation (Handy
+    # types the transcription into the box), then Enter. Esc cancels and stops
+    # the dictation (handy --cancel).
+    bindsym $mod+y exec /home/kannar/git/kannar/friendly/friendly --on-open 'handy --toggle-transcription' --on-cancel 'handy --cancel'
 
     # dropdown (quake-style) terminal: ² toggles the scratchpad foot instance
     bindsym $mod+twosuperior [app_id="dropdown"] scratchpad show

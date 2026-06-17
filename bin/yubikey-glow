@@ -1,0 +1,273 @@
+#!/usr/bin/env python3
+# yubikey-glow — a click-through rainbow "Siri glow" around the screen edges
+# that lights up while a YubiKey/OpenPGP touch is pending.
+#
+# Detection: connects to yubikey-touch-detector's unix socket
+#   ($XDG_RUNTIME_DIR/yubikey-touch-detector.socket) and reads its
+#   <SOURCE>_<STATE> messages (e.g. GPG_1 = touch needed, GPG_0 = done).
+# Display: one wlr-layer-shell OVERLAY surface per monitor, anchored to all four
+#   edges (covers the monitor; center transparent), input region empty so it is
+#   fully click-through, drawn with Cairo as a rainbow border whose hue rotates
+#   and whose brightness breathes; only the ~BORDER px edge band is painted.
+#
+# Always mapped but fully transparent (and click-through) when idle, so it never
+# steals clicks from waybar or windows underneath. GTK3 is used deliberately:
+# it can set an empty input shape for click-through, which GTK4 cannot.
+#
+# Usage:
+#   yubikey-glow            run as a daemon (sway: exec $bin/yubikey-glow)
+#   yubikey-glow --test [N] preview the glow for N seconds (default 5), no socket
+
+import os
+import re
+import sys
+import math
+import time
+import socket
+import colorsys
+import threading
+
+import gi
+gi.require_version("Gtk", "3.0")
+gi.require_version("GtkLayerShell", "0.1")
+from gi.repository import Gtk, Gdk, GLib, GtkLayerShell  # noqa: E402
+import cairo  # noqa: E402
+
+# --- look & feel -------------------------------------------------------------
+BORDER     = 64      # glow reach inward from each screen edge, px
+FPS        = 30
+HUE_SPEED  = 0.0035  # hue rotation per frame  (~10s per full rainbow)
+PULSE_SPEED = 0.11   # breathing speed (rad/frame, ~1.7s per cycle)
+SAT, VAL   = 0.9, 1.0
+HUE_STOPS  = 12      # rainbow gradient resolution across the diagonal
+# inward alpha falloff per edge: (offset, alpha) — bright at the edge, soft tail
+FALLOFF = [(0.0, 1.0), (0.10, 0.9), (0.40, 0.35), (1.0, 0.0)]
+
+# --- detector socket ---------------------------------------------------------
+SOCK_PATH = os.path.join(
+    os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"),
+    "yubikey-touch-detector.socket",
+)
+MSG_RE = re.compile(rb"(GPG|U2F|HMAC|CHALLENGE)_(0|1)")
+
+
+class GlowManager:
+    def __init__(self):
+        self.windows = []          # one GlowWindow per monitor
+        self.active_sources = set()
+        self.active = False
+        self.phase = 0.0           # hue rotation phase
+        self.pulse = 0.0           # breathing phase
+        self.timer = 0             # animation timeout source id
+
+        self.display = Gdk.Display.get_default()
+        self.display.connect("monitor-added", lambda *_: self.rebuild())
+        self.display.connect("monitor-removed", lambda *_: self.rebuild())
+        self.rebuild()
+
+    # -- one overlay surface per monitor -------------------------------------
+    def rebuild(self):
+        for w in self.windows:
+            w.destroy()
+        self.windows = []
+        # Without an RGBA visual the full-monitor overlay can't be transparent —
+        # it would paint solid black over the whole screen. Refuse rather than
+        # black it out, and say why.
+        if Gdk.Screen.get_default().get_rgba_visual() is None:
+            print("yubikey-glow: no RGBA visual (compositor without alpha?) — "
+                  "overlay disabled", file=sys.stderr)
+            return
+        n = self.display.get_n_monitors()
+        for i in range(n):
+            self.windows.append(GlowWindow(self, self.display.get_monitor(i)))
+        # if we rebuild mid-glow, keep animating on the new set
+        if self.active and not self.timer:
+            self._start_timer()
+
+    # -- show / hide ----------------------------------------------------------
+    def set_active(self, active):
+        if active == self.active:
+            return
+        self.active = active
+        if active:
+            self._start_timer()
+        else:
+            self._stop_timer()
+            for w in self.windows:        # final transparent repaint
+                w.area.queue_draw()
+
+    def _start_timer(self):
+        if not self.timer:
+            self.timer = GLib.timeout_add(int(1000 / FPS), self._tick)
+
+    def _stop_timer(self):
+        if self.timer:
+            GLib.source_remove(self.timer)
+            self.timer = 0
+
+    def _tick(self):
+        self.phase = (self.phase + HUE_SPEED) % 1.0
+        self.pulse += PULSE_SPEED
+        for w in self.windows:
+            w.area.queue_draw()
+        return True
+
+    # -- called from the socket thread ---------------------------------------
+    def on_message(self, source, on):
+        if on:
+            self.active_sources.add(source)
+        else:
+            self.active_sources.discard(source)
+        self.set_active(bool(self.active_sources))
+        return False  # one-shot idle
+
+    def clear(self):
+        self.active_sources.clear()
+        self.set_active(False)
+        return False
+
+
+class GlowWindow(Gtk.Window):
+    def __init__(self, mgr, monitor):
+        super().__init__(type=Gtk.WindowType.TOPLEVEL)
+        self.mgr = mgr
+        self._mask_cache = None     # cached edge masks, rebuilt on size change
+        self._mask_size = None
+
+        # transparent surface
+        screen = self.get_screen()
+        visual = screen.get_rgba_visual()
+        if visual is not None:
+            self.set_visual(visual)
+        self.set_app_paintable(True)
+        self.set_decorated(False)
+
+        # layer-shell: overlay anchored to all four edges (covers the monitor),
+        # drawn over panels, reserving no space
+        GtkLayerShell.init_for_window(self)
+        GtkLayerShell.set_namespace(self, "yubikey-glow")
+        GtkLayerShell.set_layer(self, GtkLayerShell.Layer.OVERLAY)
+        GtkLayerShell.set_monitor(self, monitor)
+        for edge in (GtkLayerShell.Edge.TOP, GtkLayerShell.Edge.BOTTOM,
+                     GtkLayerShell.Edge.LEFT, GtkLayerShell.Edge.RIGHT):
+            GtkLayerShell.set_anchor(self, edge, True)  # all four => fill monitor
+        GtkLayerShell.set_exclusive_zone(self, -1)  # draw over panels, reserve none
+
+        self.area = Gtk.DrawingArea()
+        self.area.connect("draw", self._draw)
+        self.add(self.area)
+
+        self.connect("realize", self._make_click_through)
+        self.show_all()
+
+    def _make_click_through(self, *_):
+        # empty input region => all pointer/touch events pass straight through
+        self.get_window().input_shape_combine_region(cairo.Region(), 0, 0)
+
+    def _edge_masks(self, w, h):
+        # (clip rect, inward-falloff mask) per edge — geometry only depends on
+        # the monitor size, so build once and reuse across frames. The mask
+        # alpha runs edge=1 .. inner=0; the per-frame breathing is folded into
+        # the rainbow source's alpha instead (cr.mask multiplies the two).
+        if self._mask_size == (w, h):
+            return self._mask_cache
+        specs = (
+            ((0, 0, w, BORDER),          (0, 0, 0, BORDER)),       # top
+            ((0, h - BORDER, w, BORDER), (0, h, 0, h - BORDER)),   # bottom
+            ((0, 0, BORDER, h),          (0, 0, BORDER, 0)),       # left
+            ((w - BORDER, 0, BORDER, h), (w, 0, w - BORDER, 0)),   # right
+        )
+        masks = []
+        for rect, (gx0, gy0, gx1, gy1) in specs:
+            mask = cairo.LinearGradient(gx0, gy0, gx1, gy1)
+            for off, a in FALLOFF:
+                mask.add_color_stop_rgba(off, 0, 0, 0, a)
+            masks.append((rect, mask))
+        self._mask_cache = masks
+        self._mask_size = (w, h)
+        return masks
+
+    def _draw(self, area, cr):
+        w = area.get_allocated_width()
+        h = area.get_allocated_height()
+
+        cr.save()
+        cr.set_operator(cairo.OPERATOR_CLEAR)
+        cr.paint()
+        cr.restore()
+
+        if not self.mgr.active:
+            return False
+
+        breath = 0.55 + 0.45 * (0.5 * (1.0 + math.sin(self.mgr.pulse)))
+
+        # diagonal rainbow as the paint source — flows across all four edges.
+        # breath rides in the source alpha so the cached masks stay static.
+        grad = cairo.LinearGradient(0, 0, w, h)
+        for i in range(HUE_STOPS + 1):
+            hue = ((i / HUE_STOPS) + self.mgr.phase) % 1.0
+            r, g, b = colorsys.hsv_to_rgb(hue, SAT, VAL)
+            grad.add_color_stop_rgba(i / HUE_STOPS, r, g, b, breath)
+
+        for (rx, ry, rw, rh), mask in self._edge_masks(w, h):
+            cr.save()
+            cr.rectangle(rx, ry, rw, rh)
+            cr.clip()
+            cr.set_source(grad)
+            cr.mask(mask)
+            cr.restore()
+        return False
+
+
+def socket_listener(mgr):
+    """Reconnecting reader for the yubikey-touch-detector unix socket."""
+    while True:
+        try:
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            sock.connect(SOCK_PATH)
+        except OSError:
+            time.sleep(2.0)   # detector not up yet — retry
+            continue
+        try:
+            buf = b""
+            while True:
+                data = sock.recv(4096)
+                if not data:
+                    break
+                # SOCK_STREAM doesn't preserve framing: a token like b"GPG_1"
+                # may straddle two recv()s. Buffer, consume whole matches, and
+                # keep the unmatched tail for the next chunk.
+                buf += data
+                end = 0
+                for m in MSG_RE.finditer(buf):
+                    src = m.group(1).decode()
+                    on = m.group(2) == b"1"
+                    GLib.idle_add(mgr.on_message, src, on)
+                    end = m.end()
+                buf = buf[end:]
+                if len(buf) > 64:     # no match in sight — don't grow on junk
+                    buf = buf[-64:]   # (longest token is well under 64 bytes)
+        except OSError:
+            pass
+        finally:
+            sock.close()
+            GLib.idle_add(mgr.clear)   # never leave the glow stuck on a drop
+        time.sleep(2.0)
+
+
+def main():
+    mgr = GlowManager()
+
+    if len(sys.argv) > 1 and sys.argv[1] == "--test":
+        secs = float(sys.argv[2]) if len(sys.argv) > 2 else 5.0
+        GLib.idle_add(mgr.set_active, True)
+        GLib.timeout_add_seconds(int(secs), Gtk.main_quit)
+    else:
+        t = threading.Thread(target=socket_listener, args=(mgr,), daemon=True)
+        t.start()
+
+    Gtk.main()
+
+
+if __name__ == "__main__":
+    main()

@@ -110,6 +110,7 @@ pnpm
 postgresql
 protobuf
 pwgen
+python-cairo
 python-numpy
 python-pipenv
 python-pipx
@@ -227,6 +228,7 @@ xterm
 yarn
 yt-dlp
 yubikey-manager
+yubikey-touch-detector
 z
 zed
 zip
