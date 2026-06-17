@@ -59,6 +59,7 @@ class GlowManager:
         self.phase = 0.0           # hue rotation phase
         self.pulse = 0.0           # breathing phase
         self.timer = 0             # animation timeout source id
+        self.stops = []            # rainbow color stops, recomputed once per tick
 
         self.display = Gdk.Display.get_default()
         self.display.connect("monitor-added", lambda *_: self.rebuild())
@@ -90,6 +91,7 @@ class GlowManager:
             return
         self.active = active
         if active:
+            self._compute_stops()     # ready before the first draw
             self._start_timer()
         else:
             self._stop_timer()
@@ -97,7 +99,10 @@ class GlowManager:
                 w.area.queue_draw()
 
     def _start_timer(self):
-        if not self.timer:
+        # no windows (e.g. no-RGBA-visual host) => nothing to animate; don't
+        # spin a 30fps timer over an empty list. rebuild() restarts it if a
+        # monitor appears while active.
+        if not self.timer and self.windows:
             self.timer = GLib.timeout_add(int(1000 / FPS), self._tick)
 
     def _stop_timer(self):
@@ -108,9 +113,23 @@ class GlowManager:
     def _tick(self):
         self.phase = (self.phase + HUE_SPEED) % 1.0
         self.pulse += PULSE_SPEED
+        self._compute_stops()
         for w in self.windows:
             w.area.queue_draw()
         return True
+
+    def _compute_stops(self):
+        # The rainbow stops depend only on phase+pulse, not on per-monitor size,
+        # so compute them once per tick instead of redoing HUE_STOPS hsv_to_rgb
+        # conversions inside every monitor's _draw. breath rides in the alpha.
+        breath = 0.55 + 0.45 * (0.5 * (1.0 + math.sin(self.pulse)))
+        stops = []
+        for i in range(HUE_STOPS + 1):
+            off = i / HUE_STOPS
+            hue = (off + self.phase) % 1.0
+            r, g, b = colorsys.hsv_to_rgb(hue, SAT, VAL)
+            stops.append((off, r, g, b, breath))
+        self.stops = stops
 
     # -- called from the socket thread ---------------------------------------
     def on_message(self, source, on):
@@ -134,11 +153,9 @@ class GlowWindow(Gtk.Window):
         self._mask_cache = None     # cached edge masks, rebuilt on size change
         self._mask_size = None
 
-        # transparent surface
-        screen = self.get_screen()
-        visual = screen.get_rgba_visual()
-        if visual is not None:
-            self.set_visual(visual)
+        # transparent surface — rebuild() only constructs a GlowWindow once it
+        # has confirmed the screen has an RGBA visual, so this is always set.
+        self.set_visual(self.get_screen().get_rgba_visual())
         self.set_app_paintable(True)
         self.set_decorated(False)
 
@@ -208,15 +225,12 @@ class GlowWindow(Gtk.Window):
         if not self.mgr.active:
             return False
 
-        breath = 0.55 + 0.45 * (0.5 * (1.0 + math.sin(self.mgr.pulse)))
-
         # diagonal rainbow as the paint source — flows across all four edges.
-        # breath rides in the source alpha so the cached masks stay static.
+        # stops (incl. breath in their alpha) are computed once per tick on the
+        # manager; here we only lay them onto this monitor's (0,0)->(w,h) axis.
         grad = cairo.LinearGradient(0, 0, w, h)
-        for i in range(HUE_STOPS + 1):
-            hue = ((i / HUE_STOPS) + self.mgr.phase) % 1.0
-            r, g, b = colorsys.hsv_to_rgb(hue, SAT, VAL)
-            grad.add_color_stop_rgba(i / HUE_STOPS, r, g, b, breath)
+        for off, r, g, b, a in self.mgr.stops:
+            grad.add_color_stop_rgba(off, r, g, b, a)
 
         for (rx, ry, rw, rh), mask in self._edge_masks(w, h):
             cr.save()
@@ -268,9 +282,14 @@ def main():
     mgr = GlowManager()
 
     if len(sys.argv) > 1 and sys.argv[1] == "--test":
-        secs = float(sys.argv[2]) if len(sys.argv) > 2 else 5.0
+        try:
+            secs = float(sys.argv[2]) if len(sys.argv) > 2 else 5.0
+        except ValueError:
+            print("usage: yubikey-glow --test [SECONDS]", file=sys.stderr)
+            sys.exit(2)
         GLib.idle_add(mgr.set_active, True)
-        GLib.timeout_add_seconds(int(secs), Gtk.main_quit)
+        # add() (ms), not add_seconds(), so sub-second previews aren't floored to 0
+        GLib.timeout_add(int(secs * 1000), Gtk.main_quit)
     else:
         t = threading.Thread(target=socket_listener, args=(mgr,), daemon=True)
         t.start()

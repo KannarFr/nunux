@@ -141,6 +141,9 @@ output eDP-1 scale 1.4
     # a tone, rewrite, and copy the result. Tap $mod+m to stop dictation (Handy
     # types the transcription into the box), then Enter. Esc cancels and stops
     # the dictation (handy --cancel).
+    # NB: `friendly` is a SEPARATE repo (~/git/kannar/friendly), not part of this
+    # dotfiles repo and not created by apply.sh/bootstrap.sh — clone it there or
+    # this binding silently no-ops.
     bindsym $mod+y exec /home/kannar/git/kannar/friendly/friendly --on-open 'handy --toggle-transcription' --on-cancel 'handy --cancel'
 
     # dropdown (quake-style) terminal: ² toggles the scratchpad foot instance
