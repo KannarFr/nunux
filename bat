@@ -1,5 +1,5 @@
-# Set the theme
---theme="GitHub"
+# Set the theme (dark — GitHub is a light theme, unreadable on a dark bg)
+--theme="gruvbox-dark"
 
 # Show line numbers, Git modifications and file header (but no grid)
 --style="numbers,changes,header,grid"

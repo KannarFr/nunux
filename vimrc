@@ -73,8 +73,8 @@ if exists('+termguicolors')
 endif
 let g:gruvbox_invert_selection='0'
 
-"colorscheme gruvbox
-"set background=light
+set background=dark
+colorscheme gruvbox
 
 if executable('rg')
     let g:rg_derive_root='true'
