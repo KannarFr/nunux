@@ -30,8 +30,11 @@ exec swayidle -w \
           before-sleep 'swaylock -f -c 000000'
 exec $bin/battery-watch
 # yubikey-glow: rainbow screen-edge glow while an OpenPGP/YubiKey touch is pending
-# (reads yubikey-touch-detector's socket; detector runs as a user service)
-exec $bin/yubikey-glow
+# (reads yubikey-touch-detector's socket; detector runs as a user service).
+# Run as a user unit so a crash self-recovers (Restart=on-failure); started here
+# rather than enabled because graphical-session.target isn't active on this box,
+# and this runs after the import-environment exec above so WAYLAND_DISPLAY is set.
+exec systemctl --user start yubikey-glow.service
 exec foot --app-id=dropdown
 
 # Default config for sway

@@ -1,0 +1,18 @@
+[Unit]
+Description=yubikey-glow rainbow screen-edge glow (OpenPGP/YubiKey touch indicator)
+# Reads yubikey-touch-detector's socket; the daemon retries the connection on
+# its own, so this is a soft ordering hint, not a hard requirement.
+Wants=yubikey-touch-detector.socket
+After=yubikey-touch-detector.socket
+
+[Service]
+Type=simple
+# Needs WAYLAND_DISPLAY/XDG_RUNTIME_DIR in the manager environment — sway imports
+# those (config line 2) before its `systemctl --user start` of this unit, so a
+# Wayland session is always present by the time we run.
+ExecStart=%h/git/kannar/nunux/bin/yubikey-glow
+Restart=on-failure
+RestartSec=2
+
+# Not enabled on a target: graphical-session.target isn't activated on this box,
+# so sway starts the unit explicitly. No [Install] section by design.

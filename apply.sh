@@ -52,6 +52,7 @@ MAP=(
   "config/systemd/user/restic-backup.timer    $HOME/.config/systemd/user/restic-backup.timer"
   "config/systemd/user/tcc-snapshot.service   $HOME/.config/systemd/user/tcc-snapshot.service"
   "config/systemd/user/tcc-snapshot.path      $HOME/.config/systemd/user/tcc-snapshot.path"
+  "config/systemd/user/yubikey-glow.service   $HOME/.config/systemd/user/yubikey-glow.service"
   "claude/statusline.sh    $HOME/.claude/statusline.sh"
   "claude/settings.json    $HOME/.claude/settings.json"
   "claude/commands         $HOME/.claude/commands"
