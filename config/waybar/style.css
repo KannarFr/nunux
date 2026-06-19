@@ -168,7 +168,7 @@ button:hover {
 }
 
 #power-profiles-daemon.power-saver {
-    background-color: #2ecc71;
+    background-color: #3a8a3a;
     color: #000000;
 }
 
@@ -177,7 +177,7 @@ label:focus {
 }
 
 #cpu {
-    background-color: #2ecc71;
+    background-color: #3a8a3a;
     color: #000000;
 }
 
@@ -261,7 +261,7 @@ label:focus {
     border-radius: 0 4px 4px 0;
 }
 
-#custom-vpn.vpn-on      { background-color: #2ecc71; color: #000000; }
+#custom-vpn.vpn-on      { background-color: #3a8a3a; color: #000000; }
 #custom-vpn.vpn-off     { background-color: #f53c3c; color: #ffffff; }
 #custom-vpn.vpn-unknown { background-color: #90b1b1; color: #000000; }
 
@@ -285,13 +285,13 @@ label:focus {
 }
 
 #custom-media {
-    background-color: #66cc99;
-    color: #2a5c45;
+    background-color: #3a8a3a;
+    color: #000000;
     min-width: 100px;
 }
 
 #custom-media.custom-spotify {
-    background-color: #66cc99;
+    background-color: #3a8a3a;
 }
 
 #custom-media.custom-vlc {
@@ -329,8 +329,8 @@ label:focus {
 }
 
 #mpd {
-    background-color: #66cc99;
-    color: #2a5c45;
+    background-color: #3a8a3a;
+    color: #000000;
 }
 
 #mpd.disconnected {
