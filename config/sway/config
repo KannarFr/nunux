@@ -32,8 +32,10 @@ exec $bin/battery-watch
 # yubikey-glow: rainbow screen-edge glow while an OpenPGP/YubiKey touch is pending
 # (reads yubikey-touch-detector's socket; detector runs as a user service).
 # Run as a user unit so a crash self-recovers (Restart=on-failure); started here
-# rather than enabled because graphical-session.target isn't active on this box,
-# and this runs after the import-environment exec above so WAYLAND_DISPLAY is set.
+# rather than enabled because graphical-session.target isn't active on this box.
+# sway fires all exec lines concurrently, so the import-environment above (line 2)
+# may not have populated WAYLAND_DISPLAY in the user-manager env before this unit
+# runs — the first start can fail; Restart=on-failure retries it into place.
 exec systemctl --user start yubikey-glow.service
 exec foot --app-id=dropdown
 

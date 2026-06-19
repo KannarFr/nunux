@@ -7,9 +7,11 @@ After=yubikey-touch-detector.socket
 
 [Service]
 Type=simple
-# Needs WAYLAND_DISPLAY/XDG_RUNTIME_DIR in the manager environment — sway imports
-# those (config line 2) before its `systemctl --user start` of this unit, so a
-# Wayland session is always present by the time we run.
+# Needs WAYLAND_DISPLAY/XDG_RUNTIME_DIR in the manager environment. sway's
+# `systemctl --user import-environment` (config line 2) supplies them, but sway
+# fires its exec lines concurrently, so that import may not have landed yet on
+# the first start — the script then exits nonzero on the missing display and
+# Restart=on-failure brings it back up once the env is in place.
 ExecStart=%h/git/kannar/nunux/bin/yubikey-glow
 Restart=on-failure
 RestartSec=2
