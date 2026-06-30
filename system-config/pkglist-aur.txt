@@ -2,6 +2,7 @@
 1password-cli
 claude-code
 clever-tools-bin
+codeburn
 germinal
 gitlab-inbox-bin
 handy-bin
@@ -14,4 +15,3 @@ stripe-cli
 vban-git
 visual-studio-code-bin
 yay
-yay-debug
