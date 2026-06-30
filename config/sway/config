@@ -111,8 +111,9 @@ output eDP-1 scale 1.4
 
     bindsym $mod+n exec swaync-client -t -sw
 
-    # jump to the pane Claude is waiting in (fires the latest notification's action)
-    bindsym $mod+g exec swaync-client -a 0
+    # jump to the pane the most-recently-waiting Claude is in (immune to Slack/etc.
+    # notifications stacking on top, which swaync-client -a 0 was not)
+    bindsym $mod+g exec ~/.claude/hooks/claude-focus.sh
 
     # Kill focused window
     bindsym Mod1+F4 kill

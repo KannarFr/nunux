@@ -73,7 +73,7 @@ dir="$(basename "${CLAUDE_PROJECT_DIR:-$PWD}")"
 # --- per-pane notification id, so we replace (not stack) and can dismiss later -
 key="${TMUX_PANE:-default}"; key="${key//[^A-Za-z0-9]/_}"
 state="${XDG_RUNTIME_DIR:-/tmp}/claude-notify-${key}.id"
-prev="$(cat "$state" 2>/dev/null)"
+prev=""; [ -f "$state" ] && read -r prev < "$state"   # first line = noti id
 
 # --- fire the clickable notification, fully detached so the hook returns now ---
 # The helper blocks until the notification closes (clicked, replaced, or closed
