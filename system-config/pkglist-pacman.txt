@@ -94,6 +94,7 @@ noto-fonts
 noto-fonts-emoji
 npm
 ollama
+openai-codex
 openapi-generator
 openjdk-src
 openjdk21-src
