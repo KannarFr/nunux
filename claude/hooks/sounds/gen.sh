@@ -25,6 +25,18 @@ done_lines=(
   "J'ai bouclé."
 )
 
+# SubagentStop event — a background/sub-agent finished, main task still running.
+agent_lines=(
+  "Un agent a terminé."
+  "Un de mes agents a fini."
+  "Agent bouclé, ça continue."
+  "Une tâche de fond est finie."
+  "Un sous-agent vient de finir."
+  "Ça avance, un agent a terminé."
+  "Un helper a rendu sa copie."
+  "Un agent en moins, je continue."
+)
+
 # Notification event — Claude needs your input/attention.
 wait_lines=(
   "Hé, j'ai besoin de toi."
@@ -58,6 +70,7 @@ gen() {
   rm -rf "$dir"; mv "$tmpdir" "$dir"
 }
 
-gen "$here/done" "${done_lines[@]}"
-gen "$here/wait" "${wait_lines[@]}"
-echo "done: ${#done_lines[@]} clips | wait: ${#wait_lines[@]} clips (voice: $voice)"
+gen "$here/done"  "${done_lines[@]}"
+gen "$here/agent" "${agent_lines[@]}"
+gen "$here/wait"  "${wait_lines[@]}"
+echo "done: ${#done_lines[@]} clips | agent: ${#agent_lines[@]} clips | wait: ${#wait_lines[@]} clips (voice: $voice)"

@@ -33,6 +33,7 @@ Two repo regions: home dotfiles keep their bare names at the repo root, and ever
 | `config/systemd/user/restic-backup.{service,timer}` | `~/.config/systemd/user/restic-backup.{service,timer}` |
 | `config/systemd/user/tcc-snapshot.{service,path}` | `~/.config/systemd/user/tcc-snapshot.{service,path}` |
 | `config/systemd/user/yubikey-glow.service` | `~/.config/systemd/user/yubikey-glow.service` |
+| `claude/hooks/` | `~/.claude/hooks` (Claude Code notification hook scripts + sounds) |
 | `claude/statusline.sh` | `~/.claude/statusline.sh` |
 | `claude/settings.json` | `~/.claude/settings.json` (user-level Claude Code config) |
 | `claude/commands/` | `~/.claude/commands` (user-defined slash commands) |

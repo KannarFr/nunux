@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Claude Code hook (Notification + Stop): when Claude wants attention, show ONE
+# Claude Code hook (Notification + Stop + SubagentStop): when Claude wants attention, show ONE
 # Sway notification (via swaync). Clicking it focuses the terminal window + the
 # tmux pane Claude runs in. Behaviour:
 #   - skipped when that window is already focused (no spam while you're looking),
 #   - only ONE notification per tmux pane is kept alive (--replace-id),
 #   - claude-dismiss.sh closes it on the next UserPromptSubmit, so it goes away
 #     the moment you respond — by any means, not just by clicking it.
-# Wired to the Notification and Stop hooks in claude/settings.json.
+# Wired to the Notification, Stop and SubagentStop hooks in claude/settings.json.
 
 # --- read hook JSON from stdin (may be empty); one jq pass, line per field -----
 # Newline-separated (not @tsv): with a tab IFS, read collapses a leading empty
@@ -18,8 +18,9 @@ input="$(cat)"
 )
 if [ -z "$msg" ]; then
   case "$event" in
-    Stop) msg="Claude finished — waiting for your next message" ;;
-    *)    msg="Claude is waiting for your input" ;;
+    Stop)         msg="Claude finished — waiting for your next message" ;;
+    SubagentStop) msg="A subagent finished — main task still running" ;;
+    *)            msg="Claude is waiting for your input" ;;
   esac
 fi
 
@@ -58,11 +59,13 @@ fi
 
 # --- audible ping, same skip-when-focused logic as the notification -----------
 # Random Henri voice line (edge-tts fr-FR-HenriNeural) from a per-event pool, so
-# the repeated ping doesn't get samey. Stop draws from sounds/done/, everything
+# the repeated ping doesn't get samey. Stop draws from sounds/done/ (your turn),
+# SubagentStop from sounds/agent/ (a helper finished, work continues), everything
 # else from sounds/wait/. Edit phrases + regenerate via ~/.claude/hooks/sounds/gen.sh.
 case "$event" in
-  Stop) snddir="$HOME/.claude/hooks/sounds/done" ;;
-  *)    snddir="$HOME/.claude/hooks/sounds/wait" ;;
+  Stop)         snddir="$HOME/.claude/hooks/sounds/done" ;;
+  SubagentStop) snddir="$HOME/.claude/hooks/sounds/agent" ;;
+  *)            snddir="$HOME/.claude/hooks/sounds/wait" ;;
 esac
 snd="$(find "$snddir" -name '*.wav' 2>/dev/null | shuf -n1)"
 [ -n "$snd" ] && paplay "$snd" >/dev/null 2>&1 &
