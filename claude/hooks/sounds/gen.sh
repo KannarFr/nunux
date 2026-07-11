@@ -2,12 +2,22 @@
 # Regenerate the Claude notification voice pools (edge-tts fr-FR-HenriNeural,
 # "Henri"). claude-waiting.sh random-picks one clip per event, so the pools
 # de-spam the repeated ping. Re-run after editing the phrase lists below.
-# Needs: edge-tts (~/.local/bin), ffmpeg. Output matches the originals:
-# 24 kHz, 16-bit, mono WAV.
+# Needs: edge-tts (on PATH or ~/.local/bin) or pipx, and ffmpeg. Output matches
+# the originals: 24 kHz, 16-bit, mono WAV.
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 voice="fr-FR-HenriNeural"
+
+# Resolve edge-tts: prefer a real install, fall back to `pipx run edge-tts`
+# (this box carries pipx but not a persistent edge-tts). Fail loudly if neither.
+if command -v edge-tts >/dev/null 2>&1; then
+  edge_tts=(edge-tts)
+elif command -v pipx >/dev/null 2>&1; then
+  edge_tts=(pipx run edge-tts)
+else
+  echo "gen.sh: need edge-tts or pipx on PATH" >&2; exit 1
+fi
 
 # Stop event — Claude finished, waiting for your next message.
 done_lines=(
@@ -60,7 +70,7 @@ gen() {
   for line in "$@"; do
     wav="$tmpdir/$(printf '%02d' "$i").wav"
     mp3="$(mktemp --suffix=.mp3)"
-    if ! edge-tts --voice "$voice" --text "$line" --write-media "$mp3" >/dev/null; then
+    if ! "${edge_tts[@]}" --voice "$voice" --text "$line" --write-media "$mp3" >/dev/null; then
       rm -f "$mp3"; rm -rf "$tmpdir"; return 1
     fi
     ffmpeg -y -loglevel error -i "$mp3" -ar 24000 -ac 1 -sample_fmt s16 "$wav"
