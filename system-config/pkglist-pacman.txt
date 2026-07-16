@@ -96,6 +96,7 @@ npm
 ollama
 openai-codex
 openapi-generator
+openblas
 openjdk-src
 openjdk21-src
 openssh
