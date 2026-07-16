@@ -23,7 +23,10 @@ exec swaync
 exec gammastep
 exec wl-paste --watch cliphist store
 # Handy: offline speech-to-text (hold ctrl+space, speak; injects via wtype)
-exec handy
+# GDK_BACKEND=x11: force XWayland so the "listening" overlay maps. As a native
+# Wayland toplevel that GTK/webkit overlay window silently fails to appear
+# (regressed after a webkit2gtk/GTK update ~Jul 2026); under XWayland it floats fine.
+exec GDK_BACKEND=x11 handy
 exec swayidle -w \
           timeout 3600 'swaylock -f -c 000000' \
           timeout 3900 'swaymsg "output * power off"' resume 'swaymsg "output * power on"' \
