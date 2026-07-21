@@ -96,14 +96,15 @@ link() {
   return 0
 }
 
-# Codex does not discover symlinked skills. Keep the repository copy canonical,
-# but materialize the two required files below ~/.codex/skills on each apply.
-copy_commit_skill() {
-  local src="$REPO/codex/skills/commit" dst="$HOME/.codex/skills/commit"
+# Codex does not discover symlinked skills. Keep repository copies canonical,
+# but materialize each skill's two required files below ~/.codex/skills.
+copy_skill() {
+  local skill_name="$1"
+  local src="$REPO/codex/skills/$skill_name" dst="$HOME/.codex/skills/$skill_name"
   local src_file dst_file target
 
   if [ ! -f "$src/SKILL.md" ] || [ ! -f "$src/agents/openai.yaml" ]; then
-    printf '  MISS  codex/skills/commit (incomplete skill source)\n'
+    printf '  MISS  codex/skills/%s (incomplete skill source)\n' "$skill_name"
     return
   fi
 
@@ -132,6 +133,7 @@ copy_commit_skill() {
       [ "$DRY" -eq 0 ] && install -m 644 "$src_file" "$dst_file"
     fi
   done
+  return 0
 }
 
 printf 'Linking dotfiles from %s%s\n' "$REPO" "$([ "$DRY" -eq 1 ] && echo '  (dry run)')"
@@ -139,5 +141,7 @@ for entry in "${MAP[@]}"; do
   read -r repo_path live_path <<< "$entry"
   link "$repo_path" "$live_path"
 done
-copy_commit_skill
+for skill_name in commit patch-and-deploy; do
+  copy_skill "$skill_name"
+done
 printf 'done.\n'

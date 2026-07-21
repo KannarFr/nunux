@@ -1,0 +1,4 @@
+interface:
+  display_name: "Patch and Deploy"
+  short_description: "Create and deploy a safe patch release"
+  default_prompt: "Use $patch-and-deploy to create and deploy the next patch release."
