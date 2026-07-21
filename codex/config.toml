@@ -1,0 +1,43 @@
+# Codex CLI user configuration. Linked to ~/.codex/config.toml by apply.sh.
+model = "gpt-5.6-terra"
+model_reasoning_effort = "high"
+notify = ["/home/kannar/.codex/hooks/codex-notify.sh"]
+
+[projects."/home/kannar/git/cc/ovd"]
+trust_level = "trusted"
+
+[projects."/home/kannar/git/cc/ovd6"]
+trust_level = "trusted"
+
+[projects."/home/kannar/git/myle"]
+trust_level = "trusted"
+
+[projects."/home/kannar/git/myle/myle-web"]
+trust_level = "trusted"
+
+[projects."/home/kannar/git/cc/axo"]
+trust_level = "trusted"
+
+[projects."/home/kannar/git/kannar/nunux"]
+trust_level = "trusted"
+
+[projects."/home/kannar/git/myle/myle-mobile"]
+trust_level = "trusted"
+
+[tui]
+notifications = true
+status_line = [
+  "model-with-reasoning",
+  "current-dir",
+  "git-branch",
+  "context-remaining",
+  "five-hour-limit",
+  "weekly-limit",
+]
+
+[tui.model_availability_nux]
+"gpt-5.5" = 3
+"gpt-5.6-sol" = 3
+
+[mcp_servers.openaiDeveloperDocs]
+url = "https://developers.openai.com/mcp"

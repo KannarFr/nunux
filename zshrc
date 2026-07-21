@@ -217,3 +217,6 @@ case ":$PATH:" in
 esac
 
 command -v mise >/dev/null && eval "$(mise activate zsh)"
+
+# opencode
+export PATH=/home/kannar/.opencode/bin:$PATH

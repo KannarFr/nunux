@@ -20,6 +20,7 @@ x-scheme-handler/about=firefox.desktop
 x-scheme-handler/unknown=firefox.desktop
 x-scheme-handler/claude-cli=claude-code-url-handler.desktop
 x-scheme-handler/slack=slack.desktop
+x-scheme-handler/net.thunderbird=userapp-Thunderbird-KTGTS3.desktop
 
 [Added Associations]
 x-scheme-handler/mailto=userapp-Thunderbird-NNKUQ3.desktop;userapp-Thunderbird-0ZTHV2.desktop;
@@ -33,3 +34,4 @@ application/x-extension-rss=userapp-Thunderbird-JEYFV2.desktop;
 x-scheme-handler/webcal=userapp-Thunderbird-9LZJV2.desktop;
 x-scheme-handler/webcals=userapp-Thunderbird-9LZJV2.desktop;
 pdf=org.mozilla.Thunderbird.desktop;
+x-scheme-handler/net.thunderbird=userapp-Thunderbird-KTGTS3.desktop;

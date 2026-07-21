@@ -114,8 +114,8 @@ output eDP-1 scale 1.4
 
     bindsym $mod+n exec swaync-client -t -sw
 
-    # jump to the pane the most-recently-waiting Claude is in (immune to Slack/etc.
-    # notifications stacking on top, which swaync-client -a 0 was not)
+    # Jump to the pane for the newest pending Claude or Codex notification,
+    # immune to Slack/etc. notification stacking.
     bindsym $mod+g exec ~/.claude/hooks/claude-focus.sh
 
     # Kill focused window
@@ -321,5 +321,4 @@ for_window [window_type="dialog"] floating enable
 for_window [title="Picture-in-Picture"] floating enable, sticky enable
 
 include @sysconfdir@/sway/config.d/*
-
 

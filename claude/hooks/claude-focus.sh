@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# $mod+g target: jump to the tmux pane of the most-recently-waiting Claude.
+# $mod+g target: jump to the tmux pane of the most-recently-waiting Claude or
+# most-recently-finished Codex turn.
 #
-# Reads the per-pane state files claude-waiting-notify.sh writes (3 lines:
+# Reads the per-pane state files Claude and Codex notification hooks write (3 lines:
 # notification id, sway con_id, tmux pane), one per pane that currently has a
 # pending "Claude is waiting" notification — claude-dismiss.sh removes a pane's
 # file the moment you answer it. We walk them newest-first and focus the first
@@ -19,7 +20,7 @@ dir="${XDG_RUNTIME_DIR:-/tmp}"
 tree="$(swaymsg -t get_tree 2>/dev/null)"
 
 state="" id="" con="" pane=""
-for f in $(ls -t "$dir"/claude-notify-*.id 2>/dev/null); do
+for f in $(ls -t "$dir"/claude-notify-*.id "$dir"/codex-notify-*.id 2>/dev/null); do
   { read -r fid; read -r fcon; read -r fpane; } < "$f"
   [ -n "$fcon" ] || continue   # legacy 1-line file: no con to focus
   # con_id still present in the live tree? (skips panes killed while waiting)
