@@ -29,6 +29,7 @@ docker-compose
 dog
 dolphin
 dpkg
+earlyoom
 efibootmgr
 eigen
 element-desktop
@@ -166,6 +167,7 @@ vault
 vim
 vte3
 vulkan-intel
+vulkan-radeon
 waybar
 wev
 wget
