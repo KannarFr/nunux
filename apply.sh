@@ -102,6 +102,11 @@ copy_skill() {
   local skill_name="$1"
   local src="$REPO/codex/skills/$skill_name" dst="$HOME/.codex/skills/$skill_name"
   local src_file dst_file target
+  # Set when $dst is about to be removed/backed up below, so the files must be
+  # recreated regardless of content. Without it a dry run would compare against
+  # a $dst that the real run would already have deleted -- and in the symlink
+  # case would compare $src with itself and report a misleading "ok".
+  local recreate=0
 
   if [ ! -f "$src/SKILL.md" ] || [ ! -f "$src/agents/openai.yaml" ]; then
     printf '  MISS  codex/skills/%s (incomplete skill source)\n' "$skill_name"
@@ -115,18 +120,20 @@ copy_skill() {
       return
     fi
     printf '  unlnk %s\n' "${dst/#$HOME/\~}"
+    recreate=1
     [ "$DRY" -eq 0 ] && rm "$dst"
   elif [ -e "$dst" ] && [ ! -d "$dst" ]; then
     local bak="$dst.bak"
     [ -e "$bak" ] && bak="$dst.bak.$(date +%s)"
     printf '  bak   %s -> %s\n' "${dst/#$HOME/\~}" "${bak/#$HOME/\~}"
+    recreate=1
     [ "$DRY" -eq 0 ] && mv "$dst" "$bak"
   fi
 
   [ "$DRY" -eq 0 ] && mkdir -p "$dst/agents"
   for src_file in "$src/SKILL.md" "$src/agents/openai.yaml"; do
     dst_file="$dst/${src_file#"$src/"}"
-    if [ "$DRY" -eq 0 ] && [ -f "$dst_file" ] && cmp -s "$src_file" "$dst_file"; then
+    if [ "$recreate" -eq 0 ] && [ -f "$dst_file" ] && cmp -s "$src_file" "$dst_file"; then
       printf '  ok    %s\n' "${dst_file/#$HOME/\~}"
     else
       printf '  sync  %s\n' "${dst_file/#$HOME/\~}"
