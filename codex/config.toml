@@ -1,6 +1,6 @@
 # Codex CLI user configuration. Linked to ~/.codex/config.toml by apply.sh.
 model = "gpt-5.6-sol"
-model_reasoning_effort = "high"
+model_reasoning_effort = "xhigh"
 notify = ["/home/kannar/.codex/hooks/codex-notify.sh"]
 
 [projects."/home/kannar/git/cc/ovd"]
@@ -24,6 +24,18 @@ trust_level = "trusted"
 [projects."/home/kannar/git/myle/myle-mobile"]
 trust_level = "trusted"
 
+[projects."/home/kannar/git/cc/console3"]
+trust_level = "trusted"
+
+[projects."/home/kannar/git/cc/addon-api-postgresql"]
+trust_level = "trusted"
+
+[projects."/home/kannar/git/cc/cc-api"]
+trust_level = "trusted"
+
+[projects."/home/kannar"]
+trust_level = "trusted"
+
 [tui]
 notifications = true
 status_line = [
@@ -41,3 +53,15 @@ status_line = [
 
 [mcp_servers.openaiDeveloperDocs]
 url = "https://developers.openai.com/mcp"
+
+[marketplaces.claude-plugins-official]
+last_updated = "2026-07-21T15:00:45Z"
+last_revision = "9ddfad2e999789e0220cacaf359b64dd873e7d72"
+source_type = "git"
+source = "https://github.com/anthropics/claude-plugins-official.git"
+
+[plugins."frontend-design@claude-plugins-official"]
+enabled = true
+
+[plugins."stripe@claude-plugins-official"]
+enabled = true
