@@ -168,9 +168,21 @@ cat <<'EOF'
   [ ] /etc files: copy system-config/system/* into place, but REGENERATE
       fstab & crypttab for THIS disk (UUIDs/LUKS differ). Safe to copy as-is:
       hostname, hosts, locale.conf, vconsole.conf, nsswitch.conf,
-      systemd/zram-generator.conf, dracut.conf.d/*.
+      systemd/zram-generator.conf, dracut.conf.d/*, sysctl.d/*,
+      default/earlyoom, docker/daemon.json,
+      systemd/system/docker.slice, systemd/system/docker.service.d/*.
       Fix the username + repo path in pacman.d/hooks/pkglist-refresh.hook,
       then: sudo cp .../pkglist-refresh.hook /etc/pacman.d/hooks/
+
+  [ ] Swapfile: sudo bin/make-swapfile
+      The fstab entry for /swap/swapfile carries 'nofail', so WITHOUT this
+      the box boots clean with half the intended swap and no error anywhere.
+      Sized as a pair with systemd/zram-generator.conf — 32G zram (pri 100)
+      + 32G disk (pri 10); changing one means reconsidering the other.
+
+  [ ] OOM protection: sudo systemctl enable --now earlyoom
+      (config: /etc/default/earlyoom — copy from system-config/system/)
+      systemd-oomd is deliberately NOT used here; see that file for why.
 
   [ ] Secrets: create ~/.local/share/secrets.env (sourced by zprofile).
 

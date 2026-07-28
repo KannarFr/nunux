@@ -1,7 +1,22 @@
-#/dev/nvme0n1p1   /boot            vfat  defaults                                                   0 0
-/dev/mapper/root /                btrfs defaults,noatime,discard,ssd,compress=zstd,subvol=/exherbo 0 1
-/dev/mapper/root /btrpool         btrfs defaults,noatime,discard,ssd,compress=zstd,subvol=/,noauto 0 1
-/dev/mapper/root /home            btrfs defaults,noatime,discard,ssd,compress=zstd,subvol=/home    0 1
-/dev/mapper/root /root            btrfs defaults,noatime,discard,ssd,compress=zstd,subvol=/root    0 1
-/dev/mapper/root /home/kannar     btrfs defaults,noatime,discard,ssd,compress=zstd,subvol=/kannar  0 1
-tmpfs            /tmp             tmpfs defaults                                                   0 0
+# Static information about the filesystems.
+# See fstab(5) for details.
+
+# <file system> <dir> <type> <options> <dump> <pass>
+# /dev/mapper/ArchinstallVg-root
+UUID=83634323-b4ab-453f-b76f-1d87c61cdfb7	/         	btrfs     	rw,relatime,compress=zstd:3,ssd,space_cache=v2,subvol=/@	0 0
+
+# /dev/mapper/ArchinstallVg-root
+UUID=83634323-b4ab-453f-b76f-1d87c61cdfb7	/home     	btrfs     	rw,relatime,compress=zstd:3,ssd,space_cache=v2,subvol=/@home	0 0
+
+# /dev/mapper/ArchinstallVg-root
+UUID=83634323-b4ab-453f-b76f-1d87c61cdfb7	/var/cache/pacman/pkg	btrfs     	rw,relatime,compress=zstd:3,ssd,space_cache=v2,subvol=/@pkg	0 0
+
+# /dev/mapper/ArchinstallVg-root
+UUID=83634323-b4ab-453f-b76f-1d87c61cdfb7	/var/log  	btrfs     	rw,relatime,compress=zstd:3,ssd,space_cache=v2,subvol=/@log	0 0
+
+# /dev/nvme0n1p1
+UUID=E735-164F      	/boot     	vfat      	rw,relatime,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,utf8,errors=remount-ro	0 2
+
+
+# /swap/swapfile: low-priority disk backstop behind zram0 (pri=100)
+/swap/swapfile	none	swap	defaults,pri=10,nofail	0 0

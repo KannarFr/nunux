@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Create the btrfs swapfile that /etc/fstab expects at /swap/swapfile.
+#
+# Needed because the fstab entry carries `nofail`: without this script a
+# rebuilt machine boots CLEANLY with half the intended swap and no error
+# anywhere, which also silently changes how full swap has to get before
+# anything reacts. Run once per machine, as root. Idempotent.
+#
+# The btrfs part is fiddlier than it looks. A swapfile must be NODATACOW,
+# and the kernel refuses NOCOW on an inode that carries either compression
+# flag — 'c' (compress, inherited from this fs's compression=zlib subvolume
+# property) or 'm' (nocompress, which `btrfs property set ... compression
+# none` sets). Only clearing the property outright with the EMPTY STRING
+# leaves an inode that accepts +C, and it must be set while the file is
+# still zero-length.
+set -euo pipefail
+
+SWAPFILE=${SWAPFILE:-/swap/swapfile}
+SWAPDIR=$(dirname "$SWAPFILE")
+SIZE_G=${SIZE_G:-32}
+PRIORITY=${PRIORITY:-10}
+
+[[ $EUID -eq 0 ]] || { echo "must run as root" >&2; exit 1; }
+
+if swapon --show=NAME --noheadings 2>/dev/null | grep -qxF "$SWAPFILE"; then
+    echo "$SWAPFILE is already active"
+    exit 0
+fi
+
+# Its own subvolume so that snapshots of the parent subvolume still work —
+# btrfs cannot snapshot a subvolume containing an active swapfile, and
+# nested subvolumes are excluded from a parent's snapshot.
+btrfs subvolume show "$SWAPDIR" >/dev/null 2>&1 || btrfs subvolume create "$SWAPDIR"
+chmod 700 "$SWAPDIR"
+btrfs property set "$SWAPDIR" compression ""
+
+rm -f "$SWAPFILE"
+: > "$SWAPFILE"
+btrfs property set "$SWAPFILE" compression ""
+chattr +C "$SWAPFILE"          # must happen while size is 0
+chmod 600 "$SWAPFILE"
+
+fallocate -l "${SIZE_G}G" "$SWAPFILE" \
+    || dd if=/dev/zero of="$SWAPFILE" bs=1M count=$((SIZE_G * 1024)) status=progress
+mkswap -U clear "$SWAPFILE" >/dev/null
+
+if ! swapon -p "$PRIORITY" "$SWAPFILE"; then
+    # btrfs can reject a fallocate'd swapfile holding unwritten extents.
+    echo "swapon rejected the fallocate'd file, rewriting with dd" >&2
+    rm -f "$SWAPFILE"
+    : > "$SWAPFILE"
+    btrfs property set "$SWAPFILE" compression ""
+    chattr +C "$SWAPFILE"
+    chmod 600 "$SWAPFILE"
+    dd if=/dev/zero of="$SWAPFILE" bs=1M count=$((SIZE_G * 1024)) status=progress
+    mkswap -U clear "$SWAPFILE" >/dev/null
+    swapon -p "$PRIORITY" "$SWAPFILE"
+fi
+
+echo "created and enabled $SWAPFILE (${SIZE_G}G, priority $PRIORITY)"
+swapon --show

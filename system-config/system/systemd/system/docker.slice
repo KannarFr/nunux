@@ -1,0 +1,35 @@
+[Unit]
+Description=Docker container slice
+Documentation=man:systemd.special(7)
+Before=slices.target
+
+[Slice]
+# Container scopes land here instead of system.slice (see
+# /etc/docker/daemon.json "cgroup-parent"), so a testcontainers batch that
+# runs away is capped as a group rather than competing with the desktop.
+#
+# These are AGGREGATE limits over every container at once, not per-container
+# limits. Two consequences worth knowing before tuning them:
+#   - MemoryHigh throttles the whole slice, so one hog forces reclaim on its
+#     innocent neighbours too.
+#   - MemoryMax OOM-kills *a* container in the slice, not necessarily the
+#     one responsible. Expect exit 137 with OOMKilled=true.
+# Per-container limits (docker run --memory) are the tool for isolating a
+# specific known-greedy workload; this slice is the backstop for the total.
+#
+# Sizing, against ~25G observed peak footprint on a 124.9 GiB machine:
+MemoryHigh=44G
+MemoryMax=56G
+
+# MemoryMax bounds memory.max (RAM) only; without this, a container hitting
+# the ceiling just pushes unbounded pages into swap instead. It is small
+# BECAUSE swap here is zram-first (pri=100) and zram's backing store is RAM:
+# swapped pages can still cost physical memory. Worst case this slice holds
+# 56G anonymous + 8G inside zram = 64G of 124.9 GiB, leaving ~60G for the
+# desktop. Raising MemorySwapMax raises the real RAM ceiling too.
+MemorySwapMax=8G
+
+# No ManagedOOM* here. systemd-oomd is not used on this host (see
+# /etc/default/earlyoom for why), and pairing MemoryHigh with a pressure
+# limit was actively broken: MemoryHigh throttling is itself what generates
+# the PSI stall, so oomd fired at MemoryHigh and MemoryMax was unreachable.

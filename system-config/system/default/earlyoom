@@ -1,0 +1,34 @@
+# earlyoom — replaces systemd-oomd on this host.
+#
+# WHY NOT systemd-oomd: it kills whole cgroups, which assumes a desktop that
+# puts each app in its own scope (GNOME/KDE do; sway does not). Here sway
+# launches everything as a direct child, so sway, firefox, waybar, Xwayland,
+# foot and tmux all share ONE flat session-N.scope. oomd's only choices were
+# "kill the entire graphical session" or "kill a tmux scope holding a Claude
+# Code session" — it could never reach the single runaway process. earlyoom
+# works on processes by RSS, which is the right granularity for this layout.
+#
+# Thresholds are absolute (KiB), not percentages: this box has 124.9 GiB, so
+# earlyoom's default -m 10,5 would sit at 12.5/6.2 GiB — far too late to be
+# useful, and a lot of RAM to leave unused. Both the memory AND the swap
+# condition must hold before earlyoom acts.
+#   SIGTERM at <8 GiB available AND <8 GiB swap free   (8388608 KiB)
+#   SIGKILL at <4 GiB available AND <4 GiB swap free   (4194304 KiB)
+#
+# --avoid protects what loses the session or the ability to recover from
+# one. --prefer names the usual runaways. 'node' is deliberately NOT
+# preferred: Claude Code sessions are node, and they are large without being
+# the thing that ran away.
+#
+# TWO SYNTAX CONSTRAINTS, both easy to get wrong:
+#   1. systemd expands $EARLYOOM_ARGS by splitting on whitespace and does
+#      NOT strip quotes, so quoting a regex here passes the quote characters
+#      through as part of the pattern. Never quote the regexes.
+#   2. Following from that, the patterns must contain no spaces — '.' stands
+#      in for a literal space below.
+# Kills are logged to the journal: journalctl -u earlyoom
+#
+# Patterns match /proc/PID/comm, which the kernel TRUNCATES TO 15 CHARS.
+# That is why it is 'Isolated.Web.Co' and 'systemd-journal', not the full
+# names — matching the untruncated form would silently never fire.
+EARLYOOM_ARGS=-r 3600 -M 8388608,4194304 -S 8388608,4194304 --avoid ^(sway|Xwayland|systemd|systemd-journal|dbus-broker|dbus-daemon|sshd|gpg-agent|tmux:.server|dockerd|containerd|swayidle|swaylock)$ --prefer ^(firefox|chromium|thunderbird|slack|java|Web.Content|Isolated.Web.Co)$
