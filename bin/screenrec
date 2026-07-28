@@ -1,0 +1,45 @@
+#!/bin/sh
+# Toggle wl-screenrec: tap the keybind to start, tap it again to stop. Same
+# shape as Handy's tap-to-toggle dictation binding.
+#
+#   screenrec area     drag a region with slurp
+#   screenrec screen   whole focused output (default)
+#
+# Kept as a script because sway splits exec commands on ';', and the toggle
+# needs a running-check plus notifications on either side.
+#
+# Stop is SIGINT, never SIGKILL: wl-screenrec only writes the mp4 moov atom on
+# a clean shutdown, so a killed recording leaves an unplayable file.
+#
+# No audio by default — add --audio below (or a third mode) if you want it;
+# wl-screenrec grabs the default pipewire sink, which on this box means every
+# notification ding lands in the recording too.
+
+DIR="${XDG_VIDEOS_DIR:-$HOME/Videos}"
+
+# pkill exits 0 only if it actually signalled something, so this doubles as the
+# "am I already recording?" test. The still-running first instance emits the
+# saved-file notification when its child exits; stay silent here to avoid two.
+pkill -INT -x wl-screenrec && exit 0
+
+mkdir -p "$DIR" || exit 1
+# Same ISO-8601 UTC stamp the $mod+p grimshot binding uses for screenshots.
+file="$DIR/$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ).mp4"
+
+case "${1:-screen}" in
+	area)
+		geom=$(slurp) || exit 0   # Esc during the drag cancels
+		notify-send -t 1500 "Recording region…" "Tap the same key to stop."
+		wl-screenrec --geometry "$geom" -f "$file"
+		;;
+	screen)
+		notify-send -t 1500 "Recording screen…" "Tap the same key to stop."
+		wl-screenrec -f "$file"
+		;;
+	*)
+		notify-send -u critical "screenrec: unknown mode '$1'" "Use 'area' or 'screen'."
+		exit 1
+		;;
+esac
+
+[ -s "$file" ] && notify-send "Recording saved" "$file"

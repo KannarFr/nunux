@@ -128,6 +128,11 @@ output eDP-1 scale 1.4
     # start screenshot
     bindsym $mod+p exec GRIMSHOT_FILENAME_FORMAT="$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)" grimshot --notify savecopy area
 
+    # screen recording (wl-screenrec, VAAPI hardware encode): tap to start,
+    # tap again to stop. Saves to ~/Videos with the same ISO stamp as $mod+p.
+    bindsym $mod+Shift+p exec $bin/screenrec area
+    bindsym Shift+Print exec $bin/screenrec screen
+
     # clipboard history (cliphist + bemenu picker)
     bindsym $mod+c exec sel=$(cliphist list | bemenu -l 15 -H 30 --fn "JetBrainsMono Nerd Font 11" -p clip) && [ -n "$sel" ] && printf '%s' "$sel" | cliphist decode | wl-copy
 
