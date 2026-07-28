@@ -144,4 +144,16 @@ done
 for skill_name in commit patch-and-deploy; do
   copy_skill "$skill_name"
 done
+
+# Secret-scanning pre-commit hook. Set per-repo, never globally: core.hooksPath
+# is winner-takes-all, so a global value would silently disable every other
+# repo's own hooks. .git/config is untracked, hence re-running this on a fresh
+# clone is what installs it.
+if [ "$(git -C "$REPO" config core.hooksPath)" = "githooks" ]; then
+  printf '  ok    core.hooksPath -> githooks\n'
+else
+  printf '  set   core.hooksPath -> githooks\n'
+  [ "$DRY" -eq 0 ] && git -C "$REPO" config core.hooksPath githooks
+fi
+
 printf 'done.\n'

@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# Block commits that stage credentials.
+#
+# This repo is PUBLIC and carries three files pinned with skip-worktree
+# (npmrc, wgetpaste.conf, zprofile) precisely because they can acquire
+# secrets. skip-worktree hides their drift from `git status`, so the usual
+# "I'd notice" safety net does not apply — and `git add -f` bypasses it
+# entirely. This hook is the backstop for that path.
+#
+# Activated per-repo (NOT globally, so other repos keep their own hooks):
+#   git config core.hooksPath githooks
+# .git/config is untracked, so a fresh clone must re-run that — bootstrap.sh
+# and apply.sh both do it.
+#
+# Scans only ADDED lines, so pre-existing content is not re-flagged forever.
+# Bypass for a known-good false positive:  git commit --no-verify
+set -uo pipefail
+
+SELF=githooks/pre-commit          # excluded below: it contains the patterns
+red()  { printf '\033[1;31m%s\033[0m\n' "$*"; }
+bold() { printf '\033[1m%s\033[0m\n' "$*"; }
+
+fail=0
+
+# --- 1. the skip-worktree trio ------------------------------------------------
+# These are only ever meant to hold placeholders. Staging one at all is
+# almost always `git add -f` on a file that has since grown a real value.
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+for f in npmrc wgetpaste.conf zprofile; do
+    if grep -qxF "$f" <<<"$staged"; then
+        red "BLOCKED: $f is staged."
+        echo "  It is pinned with skip-worktree because it can hold secrets."
+        echo "  If you really mean to update the committed placeholder:"
+        echo "      git commit --no-verify"
+        fail=1
+    fi
+done
+
+# --- 2. credential patterns in added lines ------------------------------------
+# file:line:content for every added line, excluding this script.
+added=$(git diff --cached -U0 --no-color --diff-filter=ACM -- . ":(exclude)$SELF" \
+        | awk '
+            /^\+\+\+ /      { f = substr($0, 7); next }
+            /^@@/           { split($3, a, ","); ln = a[1]; sub(/^\+/, "", ln); ln += 0; next }
+            /^\+/           { print f ":" ln ":" substr($0, 2); ln++ }
+          ')
+
+# Known credential shapes. Anchored on format, so these are high-confidence.
+shapes='BEGIN [A-Z ]*PRIVATE KEY|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{20,}'
+shapes+='|xox[baprs]-[A-Za-z0-9-]{10,}|glpat-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{35}'
+shapes+='|sk-[A-Za-z0-9]{32,}|sk_'"live"'_[A-Za-z0-9]{16,}|-----BEGIN'
+
+# token = <16+ chars>. Noisier, so placeholders and indirection are allowed.
+assign='(_?(token|passwd|password|secret|apikey|api_key|access_key|auth))[[:space:]]*[:=][[:space:]]*["'"'"']?[A-Za-z0-9/+_-]{16,}'
+allow='GITHUBTOKEN|secrets\.env|restic\.env|\$\{|\$\(|\$[A-Z_]+|<[A-Za-z_]+>|xxx|XXX|placeholder|example|EXAMPLE'
+
+hits=$(grep -InE "$shapes" <<<"$added")
+hits+=$'\n'$(grep -InE "$assign" <<<"$added" | grep -vE "$allow")
+hits=$(grep -v '^$' <<<"$hits")
+
+if [ -n "$hits" ]; then
+    red "BLOCKED: staged content looks like a credential."
+    while IFS= read -r line; do
+        # line is "N:path:lineno:content" from grep -n over our synthetic list;
+        # drop grep's counter, then redact the tail of the match.
+        entry=${line#*:}
+        printf '  %s\n' "${entry:0:120}" | sed -E 's/([A-Za-z0-9/+_-]{8})[A-Za-z0-9/+_-]{8,}/\1…REDACTED/g'
+    done <<<"$hits"
+    echo
+    echo "  If this is a false positive:  git commit --no-verify"
+    fail=1
+fi
+
+if [ "$fail" -ne 0 ]; then
+    echo
+    bold "Commit aborted. Secrets belong in ~/.local/share/secrets.env, never in this repo."
+    exit 1
+fi
+
+exit 0

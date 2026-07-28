@@ -71,6 +71,8 @@ yay  -S --needed - < system-config/pkglist-aur.txt
 
 `npmrc`, `wgetpaste.conf`, and `zprofile` are tracked but pinned locally with `git update-index --skip-worktree` (verify: `git ls-files -v | grep '^S'`). The `.gitignore` header explains why: these contain or risk leaking secrets. Note that `zprofile` is *also* symlinked from `~/.zprofile`, so edits to the symlink land in this repo's working tree — skip-worktree just hides them from `git status` so they aren't accidentally committed.
 
+A `githooks/pre-commit` hook is the backstop (installed by `apply.sh` via `git config core.hooksPath githooks`, set **per-repo** — a global value would disable other repos' hooks). It blocks a commit if any of the three files is staged at all, or if any added line matches a known credential shape. Placeholders (`<GITHUBTOKEN>`), `$VAR` indirection and `secrets.env` references are allowlisted. Override with `git commit --no-verify` when deliberately updating a placeholder. Note `.git/config` is untracked, so a fresh clone has no hook until `apply.sh` runs.
+
 Rules:
 - Don't edit these files here as part of normal work — drift is invisible to `git status`.
 - To deliberately update the committed placeholder (non-secret line), use `git add -f <file>`.
