@@ -17,6 +17,7 @@ cargo-sweep
 chromaprint
 chromium
 clamav
+clang
 cliphist
 cmake
 dialog
@@ -166,6 +167,7 @@ valkey
 vault
 vim
 vte3
+vulkan-headers
 vulkan-intel
 vulkan-radeon
 waybar
