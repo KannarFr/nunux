@@ -31,8 +31,13 @@ pane="${TMUX_PANE:-}"
 # Walk from the tmux client's pid up the process tree; the first ancestor whose
 # pid appears in get_tree is the terminal-emulator window (works for any
 # terminal, not just one named binary). Fetch the tree once and reuse it.
+# $SWAYSOCK is inherited from the tmux server and goes stale across a sway
+# restart; ensure_swaysock re-derives it (or unsets it) so con is real.
+. "$(dirname "$(readlink -f "$0")")/claude-focus-lib.sh"
+ensure_swaysock
+
 con=""
-if [ -n "$pane" ] && [ -n "$SWAYSOCK" ]; then
+if [ -n "$pane" ] && [ -n "${SWAYSOCK:-}" ]; then
   client_pid="$(tmux display-message -p -t "$pane" '#{client_pid}' 2>/dev/null)"
   tree="$(swaymsg -t get_tree 2>/dev/null)"
   p="$client_pid"

@@ -16,6 +16,7 @@ set -u
 
 dir="${XDG_RUNTIME_DIR:-/tmp}"
 . "$(dirname "$(readlink -f "$0")")/claude-focus-lib.sh"
+ensure_swaysock   # sway's own bindsym env is fine; a manual run's may be stale
 
 tree="$(swaymsg -t get_tree 2>/dev/null)"
 
