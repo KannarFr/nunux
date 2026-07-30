@@ -1,0 +1,179 @@
+#!/usr/bin/env bash
+# sway-watchdog — detect a hung sway compositor and capture why, at a moment
+# when the machine is still alive enough to write it down.
+#
+# Why this exists: five boots (2026-07-27 .. 07-30) ended with the journal
+# simply stopping mid-line. A kernel wedge and a compositor hang look IDENTICAL
+# in the journal -- in both cases logging just stops -- so the existing
+# kernel-side instrumentation (hardlockup_panic, efi-pstore; see
+# /etc/sysctl.d/99-lockup-panic.conf) cannot tell them apart. This closes that
+# gap from the other side.
+#
+# READ THE RESULT LIKE THIS:
+#   dump written  -> sway hung while the kernel kept running. Compositor/GPU
+#                    problem. The dump says which.
+#   no dump, box  -> the kernel went down too (or first). Not a sway bug;
+#   dead          -> look at pstore/panic instead.
+# Both outcomes are informative. Silence is a result, not a failure.
+#
+# Runs as ROOT deliberately. As the session user, kernel.yama.ptrace_scope=1
+# blocks eu-stack, and /proc/<pid>/{syscall,stack} are unreadable while wchan
+# just returns 0 -- i.e. everything worth having needs privilege. Root also
+# gets the DRM atomic state under debugfs, which is the single most useful
+# artifact for a display-pipeline hang on this host.
+#
+# Detection is sway's own IPC: if `swaymsg -t get_version` stops answering, the
+# compositor's event loop is not turning. That is the definition of the hang.
+
+set -uo pipefail
+
+WATCH_UID=${SWAY_WATCHDOG_UID:-1000}          # session user to watch
+INTERVAL=${SWAY_WATCHDOG_INTERVAL:-5}         # seconds between probes
+TIMEOUT=${SWAY_WATCHDOG_TIMEOUT:-4}           # per-probe IPC timeout
+FAILS=${SWAY_WATCHDOG_FAILS:-3}               # consecutive fails before dumping
+DUMPDIR=${SWAY_WATCHDOG_DUMPDIR:-/var/log/sway-watchdog}
+KEEP=${SWAY_WATCHDOG_KEEP:-20}                # dumps to retain
+
+# systemd parses these prefixes into journal priorities (SyslogLevelPrefix=yes).
+# err (<3>) matters: journald fsyncs err-and-above immediately, so the alert
+# survives even if the box dies moments later. Everything else can be lost.
+err()  { printf '<3>%s\n' "$*"; }
+warn() { printf '<4>%s\n' "$*"; }
+info() { printf '<6>%s\n' "$*"; }
+
+sway_pid() { pgrep -u "$WATCH_UID" -x sway | head -1; }
+sway_sock() { ls -t "/run/user/$WATCH_UID"/sway-ipc."$WATCH_UID".*.sock 2>/dev/null | head -1; }
+
+# Every capture is wrapped in `timeout`: this script must never hang on the
+# thing it is diagnosing. A truncated dump beats no dump.
+cap() { # cap <seconds> <label> <command...>
+    local t=$1 label=$2; shift 2
+    printf '\n===== %s =====\n' "$label"
+    timeout "$t" "$@" 2>&1 || printf '(capture failed or timed out after %ss)\n' "$t"
+}
+
+dump() { # dump <pid> <sock> <unresponsive-seconds>
+    local pid=$1 sock=$2 secs=$3
+    local stamp file
+    stamp=$(date +%Y%m%d-%H%M%S)
+    file="$DUMPDIR/hang-$stamp.txt"
+    mkdir -p "$DUMPDIR"
+
+    {
+        printf 'sway-watchdog hang dump\n'
+        printf 'when:          %s\n' "$(date -Is)"
+        printf 'unresponsive:  %ss (IPC probe timeout %ss x %s)\n' "$secs" "$TIMEOUT" "$FAILS"
+        printf 'sway pid:      %s\n' "$pid"
+        printf 'ipc socket:    %s\n' "$sock"
+        printf 'uptime:        %s\n' "$(uptime)"
+
+        # Thread states first: cheapest signal and often sufficient. D = stuck
+        # in an uninterruptible kernel call (GPU fence wait, I/O); R spinning
+        # in userspace is a different bug entirely.
+        printf '\n===== sway threads (state / wchan / syscall) =====\n'
+        for t in /proc/"$pid"/task/*; do
+            [ -d "$t" ] || continue
+            printf '%-8s %-20s state=%-24s wchan=%-28s syscall=%s\n' \
+                "${t##*/}" \
+                "$(cat "$t/comm" 2>/dev/null)" \
+                "$(awk '/^State:/{print $2" "$3}' "$t/status" 2>/dev/null)" \
+                "$(cat "$t/wchan" 2>/dev/null || echo '?')" \
+                "$(cut -d' ' -f1 "$t/syscall" 2>/dev/null || echo '?')"
+        done
+
+        printf '\n===== sway kernel stacks (per thread) =====\n'
+        for t in /proc/"$pid"/task/*; do
+            [ -d "$t" ] || continue
+            printf -- '--- %s (%s) ---\n' "${t##*/}" "$(cat "$t/comm" 2>/dev/null)"
+            timeout 3 cat "$t/stack" 2>&1 || echo '(unavailable)'
+        done
+
+        # Userspace backtrace. The one that names the actual function sway is
+        # stuck in; can be slow on a wedged process, hence the long timeout.
+        cap 30 "userspace backtrace (eu-stack)" eu-stack -p "$pid"
+
+        # DRM atomic state: for an eDP-1 page-flip/EBUSY hang this shows which
+        # plane/CRTC commit never completed. Chronic EBUSY on this host makes
+        # this the highest-value artifact.
+        printf '\n===== DRM state (debugfs) =====\n'
+        for d in /sys/kernel/debug/dri/*/state; do
+            [ -r "$d" ] || continue
+            printf -- '--- %s ---\n' "$d"
+            timeout 5 cat "$d" 2>&1 | head -200
+        done
+        # NB: deliberately does NOT touch amdgpu_gpu_recover — *reading* that
+        # file triggers a GPU reset. Never add it to this glob.
+        for d in /sys/kernel/debug/dri/*/amdgpu_fence_info \
+                 /sys/kernel/debug/dri/*/amdgpu_ring_gfx; do
+            [ -r "$d" ] || continue
+            printf -- '--- %s ---\n' "$d"
+            timeout 5 head -c 4000 "$d" 2>&1
+        done
+
+        cap 5  "pressure stall (cpu/io/memory)" grep . /proc/pressure/cpu /proc/pressure/io /proc/pressure/memory
+        cap 5  "top CPU"      ps -eo pid,ppid,stat,pcpu,pmem,comm --sort=-pcpu
+        cap 5  "memory"       free -h
+        cap 10 "dmesg tail"   dmesg -T --level=emerg,alert,crit,err,warn,notice
+        cap 5  "ipc probe (verbose)" swaymsg -s "$sock" -t get_version
+    } >"$file" 2>&1
+
+    # The whole point is surviving what happens next -- get it onto the disk.
+    sync "$file" 2>/dev/null || sync
+
+    err "sway IPC unresponsive ${secs}s — hang dump written to $file"
+    # A couple of lines inline at err priority too, so that even if the dump
+    # file is lost with the filesystem, the journal still carries the verdict.
+    awk '/^===== sway threads/,/^$/' "$file" | head -8 | while IFS= read -r l; do
+        [ -n "$l" ] && err "  $l"
+    done
+
+    ls -1t "$DUMPDIR"/hang-*.txt 2>/dev/null | tail -n +$((KEEP + 1)) | xargs -r rm -f
+}
+
+info "sway-watchdog started (uid=$WATCH_UID interval=${INTERVAL}s timeout=${TIMEOUT}s fails=$FAILS)"
+
+consecutive=0
+dumped=0
+hang_start=0
+last_heartbeat=0
+missing_logged=0
+
+while :; do
+    pid=$(sway_pid)
+    sock=$(sway_sock)
+
+    if [ -z "$pid" ] || [ -z "$sock" ]; then
+        # No session yet, or sway exited normally. Not an error.
+        [ "$consecutive" -gt 0 ] && info "sway is gone; resetting watchdog state"
+        [ "$missing_logged" -eq 0 ] && { info "waiting for a sway session"; missing_logged=1; }
+        consecutive=0; dumped=0; hang_start=0
+        sleep "$INTERVAL"
+        continue
+    fi
+    missing_logged=0
+
+    if timeout "$TIMEOUT" swaymsg -s "$sock" -t get_version >/dev/null 2>&1; then
+        if [ "$consecutive" -ge "$FAILS" ]; then
+            warn "sway IPC recovered after $(( $(date +%s) - hang_start ))s"
+        fi
+        consecutive=0; dumped=0; hang_start=0
+    else
+        consecutive=$((consecutive + 1))
+        [ "$hang_start" -eq 0 ] && hang_start=$(date +%s)
+        secs=$(( $(date +%s) - hang_start ))
+
+        if [ "$consecutive" -ge "$FAILS" ] && [ "$dumped" -eq 0 ]; then
+            dump "$pid" "$sock" "$secs"
+            dumped=1
+            last_heartbeat=$(date +%s)
+        elif [ "$dumped" -eq 1 ] && [ $(( $(date +%s) - last_heartbeat )) -ge 60 ]; then
+            # Keep an err-priority pulse going while hung. If these stop, the
+            # timestamp of the last one is when the *kernel* went down -- which
+            # is exactly the number missing from every incident so far.
+            err "sway still unresponsive (${secs}s)"
+            last_heartbeat=$(date +%s)
+        fi
+    fi
+
+    sleep "$INTERVAL"
+done

@@ -1,0 +1,35 @@
+[Unit]
+Description=sway hang watchdog (compositor-vs-kernel freeze discriminator)
+Documentation=file:/etc/sysctl.d/99-lockup-panic.conf
+# Deliberately a SYSTEM unit, not a user one: the diagnosis needs eu-stack and
+# /proc/<pid>/{stack,syscall} against sway, and kernel.yama.ptrace_scope=1
+# denies all of that to a sibling process of the same user. It reaches sway
+# over its IPC socket in /run/user/1000 instead of needing the session env.
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/home/kannar/git/kannar/nunux/bin/sway-watchdog
+Restart=always
+RestartSec=5
+
+# Needs root for ptrace and debugfs, but nothing else.
+# LogsDirectory (not ReadWritePaths) so systemd creates /var/log/sway-watchdog
+# itself -- ProtectSystem=strict would otherwise fail the unit on a path that
+# does not exist yet, i.e. on every fresh machine.
+LogsDirectory=sway-watchdog
+ProtectHome=read-only
+ProtectSystem=strict
+PrivateTmp=yes
+NoNewPrivileges=yes
+# NB: do not add ProtectKernelTunables= -- it hides /sys/kernel/debug, which is
+# where the DRM atomic state lives, i.e. the whole point of the dump.
+
+# Never let the watchdog become the thing that eats the machine it is meant to
+# be diagnosing.
+CPUQuota=10%
+MemoryMax=128M
+Nice=10
+
+[Install]
+WantedBy=multi-user.target
