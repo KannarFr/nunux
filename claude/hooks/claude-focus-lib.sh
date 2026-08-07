@@ -12,14 +12,25 @@
 # that it answers. That is how state files end up with an empty con_id, which
 # claude-focus.sh then skips, so $mod+g does nothing at all.
 # Cheap enough to call unconditionally: one IPC round-trip on the happy path.
+#
+# Probes are wrapped in `timeout` as a backstop. Against a *hung* (not crashed)
+# sway the socket still accepts connect(), so the request goes out and the reply
+# never comes; swaymsg does self-bound that wait at ~3s ("Unable to receive IPC
+# response", measured), so this is not the difference between hanging and not.
+# What it does buy: a cap on the TOTAL when the fallback loop below probes
+# several candidate sockets in turn, and an explicit, tunable bound instead of
+# an undocumented internal one. Keep it just above swaymsg's own 3s -- tighter
+# would cut off a healthy-but-slow compositor and report it as dead. Same value
+# as bin/sway-watchdog's per-probe TIMEOUT, for the same reason.
+SWAY_PROBE_TIMEOUT=${SWAY_PROBE_TIMEOUT:-4}
 ensure_swaysock() {
-  swaymsg -t get_version >/dev/null 2>&1 && return 0
+  timeout "$SWAY_PROBE_TIMEOUT" swaymsg -t get_version >/dev/null 2>&1 && return 0
   local uid s pid
   uid="$(id -u)"
   for pid in $(pgrep -x sway 2>/dev/null); do
     s="${XDG_RUNTIME_DIR:-/run/user/$uid}/sway-ipc.$uid.$pid.sock"
     [ -S "$s" ] || continue
-    if SWAYSOCK="$s" swaymsg -t get_version >/dev/null 2>&1; then
+    if SWAYSOCK="$s" timeout "$SWAY_PROBE_TIMEOUT" swaymsg -t get_version >/dev/null 2>&1; then
       export SWAYSOCK="$s"
       return 0
     fi
@@ -34,7 +45,7 @@ ensure_swaysock() {
 focus_pane() {
   local con="$1" pane="$2"
   ensure_swaysock
-  [ -n "$con" ] && swaymsg "[con_id=$con] focus" >/dev/null 2>&1
+  [ -n "$con" ] && timeout "$SWAY_PROBE_TIMEOUT" swaymsg "[con_id=$con] focus" >/dev/null 2>&1
   if [ -n "$pane" ]; then
     tmux select-window -t "$pane" >/dev/null 2>&1
     tmux select-pane   -t "$pane" >/dev/null 2>&1

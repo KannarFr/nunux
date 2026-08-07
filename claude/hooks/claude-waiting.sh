@@ -39,7 +39,7 @@ ensure_swaysock
 con=""
 if [ -n "$pane" ] && [ -n "${SWAYSOCK:-}" ]; then
   client_pid="$(tmux display-message -p -t "$pane" '#{client_pid}' 2>/dev/null)"
-  tree="$(swaymsg -t get_tree 2>/dev/null)"
+  tree="$(timeout "$SWAY_PROBE_TIMEOUT" swaymsg -t get_tree 2>/dev/null)"
   p="$client_pid"
   while [ -n "$p" ] && [ "$p" != "1" ]; do
     con="$(printf '%s' "$tree" | jq -r --argjson pid "$p" \

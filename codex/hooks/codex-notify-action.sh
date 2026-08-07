@@ -25,9 +25,19 @@ action=""; read -r action <&3
 exec 3<&-
 
 [ -n "$action" ] || exit 0
-[ -n "${CODEX_CON:-}" ] && swaymsg "[con_id=${CODEX_CON}] focus" >/dev/null 2>&1
-if [ -n "${CODEX_PANE:-}" ]; then
-  tmux select-window -t "$CODEX_PANE" >/dev/null 2>&1
-  tmux select-pane -t "$CODEX_PANE" >/dev/null 2>&1
+
+# This helper blocks on the notification until you interact with it, which can
+# be hours -- easily long enough for sway to restart underneath it and leave the
+# inherited $SWAYSOCK pointing at a dead socket, so the focus below would
+# silently do nothing. Re-derive it at the moment of use.
+if [ -r "$HOME/.claude/hooks/claude-focus-lib.sh" ]; then
+  . "$HOME/.claude/hooks/claude-focus-lib.sh"
+  focus_pane "${CODEX_CON:-}" "${CODEX_PANE:-}"
+else
+  [ -n "${CODEX_CON:-}" ] && timeout 4 swaymsg "[con_id=${CODEX_CON}] focus" >/dev/null 2>&1
+  if [ -n "${CODEX_PANE:-}" ]; then
+    tmux select-window -t "$CODEX_PANE" >/dev/null 2>&1
+    tmux select-pane -t "$CODEX_PANE" >/dev/null 2>&1
+  fi
 fi
 [ -n "${CODEX_STATE:-}" ] && rm -f "$CODEX_STATE"

@@ -18,7 +18,7 @@ dir="${XDG_RUNTIME_DIR:-/tmp}"
 . "$(dirname "$(readlink -f "$0")")/claude-focus-lib.sh"
 ensure_swaysock   # sway's own bindsym env is fine; a manual run's may be stale
 
-tree="$(swaymsg -t get_tree 2>/dev/null)"
+tree="$(timeout "$SWAY_PROBE_TIMEOUT" swaymsg -t get_tree 2>/dev/null)"
 
 state="" id="" con="" pane=""
 for f in $(ls -t "$dir"/claude-notify-*.id "$dir"/codex-notify-*.id 2>/dev/null); do

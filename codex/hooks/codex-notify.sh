@@ -9,10 +9,23 @@ msg="$({ printf '%s' "$payload" | jq -r '."last-assistant-message" // empty' 2>/
 [ -n "$msg" ] || msg="Finished — waiting for your next message"
 
 pane="${TMUX_PANE:-}"
+
+# $SWAYSOCK is inherited from the tmux server and goes stale across a sway
+# restart; because a dead sway leaves its socket *file* behind, the guard below
+# still passes and get_tree quietly returns nothing, so con ends up empty and
+# claude-focus.sh skips this pane -- $mod+g walks straight past a waiting Codex
+# turn. The Claude hooks already solve this; borrow their helper rather than
+# duplicating it (apply.sh symlinks both trees out of the same repo).
+if [ -r "$HOME/.claude/hooks/claude-focus-lib.sh" ]; then
+  . "$HOME/.claude/hooks/claude-focus-lib.sh"
+  ensure_swaysock
+fi
+: "${SWAY_PROBE_TIMEOUT:=4}"
+
 con=""
 if [ -n "$pane" ] && [ -n "${SWAYSOCK:-}" ]; then
   client_pid="$(tmux display-message -p -t "$pane" '#{client_pid}' 2>/dev/null)"
-  tree="$(swaymsg -t get_tree 2>/dev/null)"
+  tree="$(timeout "$SWAY_PROBE_TIMEOUT" swaymsg -t get_tree 2>/dev/null)"
   p="$client_pid"
   while [ -n "$p" ] && [ "$p" != 1 ]; do
     con="$(printf '%s' "$tree" | jq -r --argjson pid "$p" \
