@@ -1,0 +1,63 @@
+#!/bin/sh
+# Is the *system* journal actually reaching the disk?
+#
+# 2026-08-05 20:21 -> 08-07 12:05: journald found system.journal corrupt,
+# renamed it, failed to bring the replacement up, and fell back to the volatile
+# runtime journal in /run -- for three consecutive boots. ~40h in which every
+# root-side message (kernel, PID 1, sway-watchdog, earlyoom, pstore
+# registration) existed only in RAM and died with each freeze. Two of this
+# host's abrupt freezes happened inside that window and left nothing behind.
+#
+# The user journal kept working the entire time, so the desktop looked normal
+# and `journalctl` still printed plenty of output -- just none of it from uid 0.
+# Nothing in the system notices this on its own.
+#
+# The alert deliberately does NOT go through the journal (that is the thing
+# under suspicion) and NOT at err priority (sway-watchdog owns that signal --
+# see its header). Plain file + wall.
+
+set -eu
+
+LOG=/var/log/journal-check.log
+MID=$(cat /etc/machine-id)
+JOURNAL=/var/log/journal/$MID/system.journal
+# journald syncs every 10s (sync.conf) and the timer runs every 15min, so a
+# system journal untouched for 15min means writes are not landing.
+MAX_AGE=900
+
+note() { printf '%s  %s\n' "$(date -Is)" "$1" >>"$LOG"; }
+
+broken() {
+	# Only shout on the transition, otherwise every tty gets a wall every
+	# 15 minutes forever.
+	if [ ! -e "$LOG" ] || ! tail -n1 "$LOG" 2>/dev/null | grep -q ' BROKEN'; then
+		echo "journal-check: system journal is NOT being persisted -- $1" |
+			wall -n 2>/dev/null || true
+	fi
+	note "BROKEN: $1"
+	exit 1
+}
+
+ok() {
+	if [ -e "$LOG" ] && tail -n1 "$LOG" 2>/dev/null | grep -q ' BROKEN'; then
+		note 'RECOVERED: system journal is persisting again'
+	fi
+	exit 0
+}
+
+[ -e "$JOURNAL" ] || broken "$JOURNAL does not exist"
+
+now=$(date +%s)
+mtime=$(stat -c %Y "$JOURNAL")
+age=$((now - mtime))
+[ "$age" -le "$MAX_AGE" ] ||
+	broken "$JOURNAL last written ${age}s ago (>${MAX_AGE}s)"
+
+# Belt and braces: after the boot-time flush, Storage=persistent removes the
+# runtime journal. If it is still there hours later, journald is serving system
+# logs out of RAM -- which is exactly the failure above, and survives no reboot.
+if [ -d /run/log/journal/"$MID" ] && [ "$(cat /proc/uptime | cut -d. -f1)" -gt 600 ]; then
+	broken "/run/log/journal/$MID still present -- journald is on volatile storage"
+fi
+
+ok

@@ -1,0 +1,12 @@
+[Unit]
+Description=Periodically verify the system journal is being persisted
+
+[Timer]
+# 10min after boot so the boot-time flush of /run/log/journal has finished,
+# then every 15min -- matching MAX_AGE in bin/journal-check.
+OnBootSec=10min
+OnUnitActiveSec=15min
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

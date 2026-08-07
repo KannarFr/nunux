@@ -1,0 +1,22 @@
+[Unit]
+Description=Verify the system journal is actually being persisted to disk
+Documentation=file:/etc/systemd/journald.conf.d/retention.conf
+# Deliberately a SYSTEM unit: the failure it detects is that *root-owned*
+# logging stopped reaching /var/log/journal while the user journal carried on
+# looking healthy. A user unit could not tell the difference.
+
+[Service]
+Type=oneshot
+ExecStart=/home/kannar/git/kannar/nunux/bin/journal-check
+
+# Needs to stat /var/log/journal and write its own logfile, nothing else.
+# ReadWritePaths rather than LogsDirectory: the alert is a single flat file,
+# and it has to survive being the only trace of a journald that is not working.
+ProtectSystem=strict
+ReadWritePaths=/var/log
+# read-only, NOT yes: ExecStart lives under /home, and ProtectHome=yes hides it
+# from the unit's own mount namespace -- the service then dies at 203/EXEC
+# before the script ever runs. Same reason sway-watchdog.service uses read-only.
+ProtectHome=read-only
+PrivateTmp=yes
+NoNewPrivileges=yes
