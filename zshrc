@@ -6,12 +6,39 @@ plugins=(
         zsh-autosuggestions
 )
 
-# Smarter completion initialization
-if [ "$(date +'%j')" != "$(stat -f '%Sm' -t '%j' ~/.zcompdump 2>/dev/null)" ]; then
-    compinit
-else
-    compinit -C
+# Completion cache. `compinit -C` is the fast path, but it skips BOTH the
+# $fpath security scan and the dumpfile's own validity check, so gate it on the
+# two things it can no longer catch itself:
+#
+#  1. Integrity. compdump writes a `#files: N  version: X` header first, and
+#     this host's hard freezes have left the dump truncated below it. zsh then
+#     sources the fragment verbatim on *either* branch — `unmatched '` at every
+#     prompt, completion dead — and plain compinit does NOT self-repair, because
+#     a surviving header still matches on file count and $ZSH_VERSION. So drop a
+#     headerless dump here; that is the only thing that regenerates it.
+#  2. Age. Full compinit runs compaudit, which refuses group-/world-writable
+#     $fpath dirs — worth paying for daily rather than never. But compinit only
+#     rewrites the dump when the $fpath file count changes, so the slow branch
+#     must touch it itself; otherwise the mtime freezes at day one and this gate
+#     latches false forever, i.e. the slow path every shell, permanently.
+#
+# Two zsh traps: `stat -f` here would be BSD/macOS syntax and fails silently on
+# GNU coreutils, and `[[ -n <glob> ]]` does no filename generation (it is true
+# even when nothing matches) — hence the array.
+_zdump=${ZDOTDIR:-$HOME}/.zcompdump
+_zhdr=''
+[[ -f $_zdump ]] && IFS= read -r _zhdr < $_zdump
+if [[ -f $_zdump && $_zhdr != '#files:'* ]]; then
+    rm -f $_zdump
 fi
+_zfresh=($_zdump(N.mh-24))
+if (( $#_zfresh )); then
+    compinit -C
+else
+    compinit
+    touch $_zdump 2>/dev/null
+fi
+unset _zdump _zhdr _zfresh
 # vcs_info
 precmd_vcs_info() { vcs_info }
 precmd_functions+=(precmd_vcs_info)
@@ -91,9 +118,6 @@ zstyle ':completion:::::' completer _expand _complete _ignored _correct _approxi
 zstyle ':completion:*:approximate:*' max-errors 2
 ## Better handling of long output
 zstyle ':completion:*' list-prompt %SAt %p: Hit TAB for more %s
-
-# Drop completions cache
-rm -f ~/.zcompdump
 
 # Enable a few things
 colors
