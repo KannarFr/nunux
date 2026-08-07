@@ -26,8 +26,16 @@ NoNewPrivileges=yes
 # where the DRM atomic state lives, i.e. the whole point of the dump.
 
 # Never let the watchdog become the thing that eats the machine it is meant to
-# be diagnosing.
-CPUQuota=10%
+# be diagnosing -- but Nice, not CPUQuota, is the right lever for that. The
+# steady-state loop is one swaymsg every 5s and costs nothing; the quota only
+# ever binds during a dump, and every capture in bin/sway-watchdog is bounded by
+# `timeout`, which measures WALL CLOCK, not CPU time. At the former 10% (=100ms
+# of CPU per second, verified via CPUQuotaPerSecUSec) an eu-stack unwind costing
+# ~2s of CPU stretched past its 30s wall-clock budget, so the single most
+# valuable section of the dump was the one most likely to come back as
+# "(capture failed or timed out)". One full core keeps that honest while Nice=10
+# still yields to everything the user is actually doing.
+CPUQuota=100%
 MemoryMax=128M
 Nice=10
 

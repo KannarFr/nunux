@@ -41,8 +41,25 @@ err()  { printf '<3>%s\n' "$*"; }
 warn() { printf '<4>%s\n' "$*"; }
 info() { printf '<6>%s\n' "$*"; }
 
-sway_pid() { pgrep -u "$WATCH_UID" -x sway | head -1; }
-sway_sock() { ls -t "/run/user/$WATCH_UID"/sway-ipc."$WATCH_UID".*.sock 2>/dev/null | head -1; }
+# The socket name encodes its owner: sway-ipc.<uid>.<pid>.sock. Derive the pid
+# FROM the socket we probe, rather than picking each independently -- the old
+# code took the lowest pid from pgrep and the newest socket by mtime, so with
+# two sway instances (a nested one, or a hung one that got respawned) it could
+# probe the healthy instance and dump the other, producing a backtrace that
+# positively asserts sway was idle while it was hung. Same source = they agree
+# by construction. Newest-first, skipping sockets whose process is gone, since
+# a crashed sway leaves its socket file behind.
+sway_target() { # prints "<pid> <sock>", or returns 1
+    local s base pid
+    for s in $(ls -t "/run/user/$WATCH_UID"/sway-ipc."$WATCH_UID".*.sock 2>/dev/null); do
+        base=${s##*/}; base=${base#sway-ipc."$WATCH_UID".}; pid=${base%.sock}
+        case $pid in ''|*[!0-9]*) continue ;; esac
+        [ -d "/proc/$pid" ] || continue
+        printf '%s %s\n' "$pid" "$s"
+        return 0
+    done
+    return 1
+}
 
 # Every capture is wrapped in `timeout`: this script must never hang on the
 # thing it is diagnosing. A truncated dump beats no dump.
@@ -58,6 +75,15 @@ dump() { # dump <pid> <sock> <unresponsive-seconds>
     stamp=$(date +%Y%m%d-%H%M%S)
     file="$DUMPDIR/hang-$stamp.txt"
     mkdir -p "$DUMPDIR"
+
+    # Announce BEFORE capturing, not after. The block below can burn ~100s of
+    # stacked timeout budgets, and in this host's pattern the box dies seconds
+    # into the hang -- an alert emitted only afterwards is an alert that never
+    # exists, and the resulting silence reads (per this file's own header) as
+    # "the kernel went down too", i.e. the exact misattribution the watchdog was
+    # built to prevent. This err line is fsynced by journald immediately, so it
+    # is the one artifact guaranteed to survive whatever happens next.
+    err "sway IPC unresponsive ${secs}s (pid $pid) — capturing hang dump to $file"
 
     {
         printf 'sway-watchdog hang dump\n'
@@ -90,7 +116,18 @@ dump() { # dump <pid> <sock> <unresponsive-seconds>
 
         # Userspace backtrace. The one that names the actual function sway is
         # stuck in; can be slow on a wedged process, hence the long timeout.
+        #
+        # DANGER: eu-stack attaches with PTRACE_ATTACH, which puts sway into
+        # group-stop. If `timeout` fires mid-unwind the tracer is SIGTERMed
+        # without ever issuing PTRACE_DETACH, and per ptrace(2) a tracee that
+        # was in group-stop when its tracer died STAYS stopped -- so the
+        # watchdog would permanently freeze a compositor that had merely
+        # stalled, and then write a dump "proving" it was hung. Timing out here
+        # is likely, not exotic: the unit throttles this process and the target
+        # is already wedged. Always kick it back; SIGCONT on a process that is
+        # running normally is a no-op, so this is unconditional on purpose.
         cap 30 "userspace backtrace (eu-stack)" eu-stack -p "$pid"
+        kill -CONT "$pid" 2>/dev/null
 
         # DRM atomic state: for an eDP-1 page-flip/EBUSY hang this shows which
         # plane/CRTC commit never completed. Chronic EBUSY on this host makes
@@ -120,7 +157,7 @@ dump() { # dump <pid> <sock> <unresponsive-seconds>
     # The whole point is surviving what happens next -- get it onto the disk.
     sync "$file" 2>/dev/null || sync
 
-    err "sway IPC unresponsive ${secs}s — hang dump written to $file"
+    err "hang dump complete: $file"
     # A couple of lines inline at err priority too, so that even if the dump
     # file is lost with the filesystem, the journal still carries the verdict.
     awk '/^===== sway threads/,/^$/' "$file" | head -8 | while IFS= read -r l; do
@@ -139,8 +176,11 @@ last_heartbeat=0
 missing_logged=0
 
 while :; do
-    pid=$(sway_pid)
-    sock=$(sway_sock)
+    if target=$(sway_target); then
+        pid=${target%% *}; sock=${target#* }
+    else
+        pid=""; sock=""
+    fi
 
     if [ -z "$pid" ] || [ -z "$sock" ]; then
         # No session yet, or sway exited normally. Not an error.
