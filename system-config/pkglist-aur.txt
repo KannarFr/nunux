@@ -10,7 +10,6 @@ hollywood
 neofetch
 nitrogen
 piper-tts-bin
-qsync
 slack-desktop
 stripe-cli
 vban-git
