@@ -17,7 +17,6 @@ cargo-sweep
 chromaprint
 chromium
 clamav
-clang
 cliphist
 cmake
 dialog
@@ -125,7 +124,6 @@ reflector
 remmina
 rofi
 ruby
-rust
 rxvt-unicode
 s3cmd
 sbt
@@ -142,6 +140,7 @@ swayidle
 swaylock
 swaync
 systemd-resolvconf
+tailscale
 terminus-font
 texlive-basic
 texlive-bin
@@ -167,7 +166,6 @@ valkey
 vault
 vim
 vte3
-vulkan-headers
 vulkan-intel
 vulkan-radeon
 waybar
