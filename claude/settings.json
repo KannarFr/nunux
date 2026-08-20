@@ -62,10 +62,55 @@
   },
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true,
-    "stripe@claude-plugins-official": true
+    "stripe@claude-plugins-official": true,
+    "rust-analyzer-lsp@claude-plugins-official": true
   },
   "tui": "fullscreen",
+  "voice": {
+    "enabled": true,
+    "mode": "hold"
+  },
   "skipWorkflowUsageWarning": true,
   "theme": "auto",
-  "agentPushNotifEnabled": true
+  "agentPushNotifEnabled": true,
+  "autoMode": {
+    "allow": [
+      "$defaults",
+      "Bash(adb reverse:*) in /home/kannar/git/myle/myle-mobile — routine port-forward re-apply per CLAUDE.md / android-reverse.sh",
+      "Bash(npx eas-cli whoami) in /home/kannar/git/myle/myle-mobile — routine auth check before builds"
+    ],
+    "soft_deny": [
+      "$defaults",
+      "Bash(npx eas-cli build --profile production*) and Bash(npx eas-cli submit*) in /home/kannar/git/myle/myle-mobile — production store build/submit, confirm before running",
+      "Bash(git push origin master) / Bash(git tag v*) in /home/kannar/git/myle/myle-mobile — direct-to-master release pushes per /patch skill, confirm before running",
+      "ssh kannar@192.168.2.82 'git ls-files ... | xargs rm -f' (or the 192.168.0.14 fallback) — destructively wipes the Mac build-slave working tree per eas-local-deploy Step 2, confirm before running"
+    ],
+    "environment": [
+      "### Org-wide",
+      "**Organization**: None configured",
+      "**Cloud provider(s)**: None configured — repo uses a self-hosted MinIO instance for media (see Key internal services), not a named cloud provider",
+      "**Repository visibility**: private (myleapp/myle-mobile, confirmed via gh)",
+      "**Internal sharing / snippet hosting**: None configured — treat public paste/gist services as outside the trust boundary",
+      "**Secrets management**: None configured — store credentials as local gitignored files (credentials.json, google-play-key.json, asc-api-key.p8, AuthKey_*.p8, keystore.jks) per .gitignore; never commit or sync them",
+      "**Default / protected branches**: master (default; repo's /patch and /patch-and-eas-deploy skills commit directly to master); no branch protection rules listed via gh (rulesets not queryable here — treat master as sensitive to force-pushes/history rewrites regardless)",
+      "**CI/CD deploy targets**: EAS Build (Expo) — profiles development/preview/staging/production in eas.json; iOS submits to App Store Connect app 6451087341 (team 35JPFU36DX); Android submits to Google Play internal track",
+      "**Network posture**: None configured",
+      "**Source control**: github.com:myleapp/myle-mobile.git (origin) — the trusted repo and its remote only",
+      "**Trusted internal domains**: api.myleapp.fr, app.myleapp.fr (myle-mobile's own API/app hosts, seen in transcript usage)",
+      "**Trusted cloud buckets**: None configured",
+      "**Key internal services**: MinIO at 127.0.0.1:9100 (local dev media store, per CLAUDE.md); myle-api local dev service at 127.0.0.1:9000",
+      "**Internal package registry**: None configured",
+      "**Sensitive data locations & audiences**: credentials.json, google-play-key.json, asc-api-key.p8, AuthKey_*.p8, keystore.jks (store signing / submission credentials, gitignored, local-file-only — never commit or sync); environments/prod/config.js (production API config)",
+      "**Data retention / declassification**: None configured",
+      "**Sensitive remote targets**: environments/prod/config.js and any prod-* namespace/host/container (whole-word/segment match on prod or production); Google Play production track and App Store Connect production release (promotion off internal/draft is manual and sensitive)",
+      "**Protected deployment namespaces / environments**: None configured — fall back to the Sensitive remote targets heuristic (prod EAS build profile, Google Play production track, App Store Connect production release)",
+      "**Protected IaC scopes**: IAM, RBAC, networking, quota, and node-pool resources; anything whose name or tag carries prod or production as a whole word or name segment",
+      "### User-specific",
+      "**Primary use of Claude Code**: mobile app development (React Native / Expo) for myle-mobile, including cutting patch releases and EAS store deploys",
+      "**Trusted repo**: /home/kannar/git/myle/myle-mobile (working directory) and its remote github.com:myleapp/myle-mobile.git (private) — confidential material (e.g. build/version bump details) is fine to commit/push here; secrets and credentials are never cleared into it regardless of visibility",
+      "**Org-specific CLIs**: rtk (216× — high-frequency, routine tool in this project); npx eas-cli / eas (EAS Build/Submit CLI, used via npx per repo convention); adb (Android debug bridge, used for port forwarding per CLAUDE.md)",
+      "routine under kannar/ prefix: SSH build coordination with the Mac build slave (kannar@192.168.2.82 / kannar@192.168.0.14, pacific.local) for iOS local builds, and local paths under /home/kannar/git/myle/myle-mobile and ~/builds/"
+    ]
+  },
+  "voiceEnabled": true
 }
