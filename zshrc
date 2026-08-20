@@ -202,7 +202,11 @@ export BAT_CONFIG_PATH=$HOME/.bat.conf
 export PATH=$PATH:$HOME/.config/composer/vendor/bin
 export PATH=$PATH:$HOME/.npm-global/bin
 #export PATH=$PATH:"$(ruby -e 'print Gem.user_dir')/bin"
-export PATH=$PATH:$HOME/.cargo/bin
+# Prepended, not appended: the rustup shims must win over anything in /usr/bin.
+# Appended, a system-packaged rust (pacman `rust`) shadows them and every
+# rust-toolchain.toml pin is silently ignored — a repo pinned to 1.95 then builds
+# and lints on whatever /usr/bin has, producing failures CI never sees.
+export PATH=$HOME/.cargo/bin:$PATH
 export PATH=$PATH:$HOME/Android/Sdk/platform-tools
 export PATH=$PATH:$HOME/Android/Sdk/tools/bin
 export SSH_KEY_PATH="~/.ssh/rsa_id"
@@ -244,3 +248,7 @@ command -v mise >/dev/null && eval "$(mise activate zsh)"
 
 # opencode
 export PATH=/home/kannar/.opencode/bin:$PATH
+
+# axo internal crate map (/axo/crates/internal-map). The secret lives outside this
+# repository on purpose — this file is tracked and pushed to GitHub.
+[ -f "$HOME/.config/axo/internal-map.env" ] && source "$HOME/.config/axo/internal-map.env"
