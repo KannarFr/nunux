@@ -1,0 +1,228 @@
+#!/bin/bash
+# Report on, and prune, the snapper snapshots on this host.
+#
+# Written 2026-08-25 while chasing "the disk is full". The trap that prompted
+# it: deleting 21G from ~/.cache/yay freed *nothing*, because /home had a
+# snapshot taken 14 minutes earlier still pinning every extent. On a
+# snapshotted btrfs subvolume, rm is not a reclaim -- the space only comes
+# back when the snapshots referencing it are gone.
+#
+# du lies here too, and in the other direction: it counts each snapshot's
+# files separately even though they share extents, so `du -sh /home` read
+# 860G on an 831G filesystem. Trust `btrfs filesystem usage`, not du.
+#
+# What the retention knobs are actually worth on this box (measured
+# 2026-08-25): root had 22 snapshots spanning 19 days, home had 1, and every
+# one was cleanup=timeline. There were no monthly, yearly, number or
+# important snapshots at all -- so lowering NUMBER_LIMIT or the monthly and
+# yearly limits frees exactly zero. Only HOURLY and DAILY do anything. The
+# limits below therefore bound future accumulation; a one-off reclaim means
+# deleting specific snapshots by id.
+#
+# Per-snapshot sizes need qgroups, which are off. `report --qgroups` will
+# offer to enable them, but that triggers a full rescan on an 831G
+# filesystem and adds ongoing write overhead -- disable again afterwards
+# with `btrfs quota disable /`.
+#
+#   snapshot-prune report            # read-only inventory
+#   snapshot-prune report --qgroups  # + exclusive sizes (SLOW, see above)
+#   snapshot-prune prune             # dry-run
+#   snapshot-prune prune --apply     # rewrite limits, run cleanup, wait for
+#                                    # the btrfs cleaner, report the delta
+#
+# Deleting snapshots is irreversible. Configs are backed up to
+# /etc/snapper/configs/<name>.bak-<stamp> before any change.
+
+set -euo pipefail
+
+CONFIGS=(root home)
+
+# --- POLICY ---------------------------------------------------------------
+# MEASURED 2026-08-25: root has 22 snapshots (Aug 6 -> Aug 25), home has 1.
+# ALL of them are cleanup=timeline. There are NO monthly, yearly, number or
+# important snapshots on this box, so lowering those limits frees exactly
+# zero. Only HOURLY and DAILY do anything here.
+#
+# These values therefore mostly limit FUTURE accumulation; the one-off
+# reclaim comes from deleting specific snapshots (see the notes at the end).
+NEW_HOURLY=5
+NEW_DAILY=7
+NEW_WEEKLY=0
+NEW_MONTHLY=2
+NEW_QUARTERLY=0
+NEW_YEARLY=0
+NEW_NUMBER_LIMIT=10
+NEW_NUMBER_LIMIT_IMPORTANT=5
+# --------------------------------------------------------------------------
+
+log()  { printf '\n\033[1;34m==>\033[0m %s\n' "$*"; }
+warn() { printf '\033[1;33m[warn]\033[0m %s\n' "$*"; }
+die()  { printf '\n\033[1;31mFAIL:\033[0m %s\n' "$*" >&2; exit 1; }
+
+[[ $EUID -eq 0 ]] || die "run me as root"
+command -v snapper >/dev/null || die "snapper not installed"
+
+MODE=${1:-report}
+FLAG=${2:-}
+
+space_snapshot() { btrfs filesystem usage / 2>/dev/null | grep -E '^\s+(Used|Free \(estimated\))' || true; }
+
+# ==========================================================================
+# report
+# ==========================================================================
+if [[ $MODE == report ]]; then
+    log "Filesystem"
+    df -h / | tail -1
+    btrfs filesystem usage / 2>/dev/null | grep -E 'Device (size|allocated|unallocated)|^\s+Used|Free \(estimated\)' || true
+
+    log "Qgroup status (needed for per-snapshot exclusive sizes)"
+    if btrfs qgroup show -re / >/dev/null 2>&1; then
+        echo "qgroups: ENABLED"
+        QG=yes
+    else
+        echo "qgroups: disabled (per-snapshot sizes unavailable)"
+        QG=no
+    fi
+
+    for c in "${CONFIGS[@]}"; do
+        log "Config: $c"
+        snapper -c "$c" list --columns number,type,date,cleanup,description 2>/dev/null || {
+            warn "could not list $c"; continue; }
+        echo
+        echo "  total snapshots : $(snapper -c "$c" list --columns number 2>/dev/null | tail -n +3 | grep -c . || true)"
+        for algo in timeline number important; do
+            n=$(snapper -c "$c" list --columns cleanup 2>/dev/null | tail -n +3 | grep -cw "$algo" || true)
+            echo "  cleanup=$algo : ${n:-0}"
+        done
+    done
+
+    if [[ $FLAG == --qgroups ]]; then
+        if [[ $QG == no ]]; then
+            warn "About to enable qgroups. On an 831G filesystem this triggers a full"
+            warn "rescan: heavy I/O for a long while, and qgroups add ongoing write"
+            warn "overhead. Disable afterwards with: btrfs quota disable /"
+            read -rp "Enable qgroups and rescan? [y/N] " a
+            [[ $a == [yY] ]] || die "aborted by user"
+            btrfs quota enable /
+            btrfs quota rescan -w /
+        fi
+        log "Per-subvolume exclusive space (excl = what deleting it actually frees)"
+        btrfs qgroup show -re --sort=excl / | head -60 || true
+    else
+        echo
+        warn "Run with --qgroups to measure how much each snapshot EXCLUSIVELY pins."
+        warn "Without it, the only way to know is to delete and watch df."
+    fi
+    exit 0
+fi
+
+# ==========================================================================
+# prune
+# ==========================================================================
+[[ $MODE == prune ]] || die "usage: $0 [report|prune] [--qgroups|--apply]"
+
+APPLY=no
+[[ $FLAG == --apply ]] && APPLY=yes
+
+log "Proposed retention policy change"
+cat <<EOF
+                        current -> proposed
+  TIMELINE_LIMIT_HOURLY      10 -> $NEW_HOURLY
+  TIMELINE_LIMIT_DAILY       10 -> $NEW_DAILY
+  TIMELINE_LIMIT_WEEKLY       0 -> $NEW_WEEKLY
+  TIMELINE_LIMIT_MONTHLY     10 -> $NEW_MONTHLY
+  TIMELINE_LIMIT_QUARTERLY    0 -> $NEW_QUARTERLY
+  TIMELINE_LIMIT_YEARLY      10 -> $NEW_YEARLY
+  NUMBER_LIMIT               50 -> $NEW_NUMBER_LIMIT
+  NUMBER_LIMIT_IMPORTANT     10 -> $NEW_NUMBER_LIMIT_IMPORTANT
+EOF
+
+if [[ $APPLY == no ]]; then
+    log "DRY RUN - nothing will be changed or deleted"
+    for c in "${CONFIGS[@]}"; do
+        log "Config: $c - snapshots that exceed the PROPOSED limits"
+        # snapper has no dry-run for cleanup, so approximate: show the
+        # snapshots that the number algorithm would drop, oldest first.
+        total=$(snapper -c "$c" list --columns number 2>/dev/null | tail -n +3 | grep -c . || echo 0)
+        echo "  currently $total snapshots"
+        echo "  oldest entries (these go first):"
+        snapper -c "$c" list --columns number,date,cleanup,description 2>/dev/null | sed -n '3,12p'
+    done
+    cat <<EOF
+
+Nothing was changed. To apply:
+
+    sudo $0 prune --apply
+
+Before you do, consider running the report with sizes first:
+
+    sudo $0 report --qgroups
+
+EOF
+    exit 0
+fi
+
+# --- apply ----------------------------------------------------------------
+log "Applying. Backing up configs first."
+STAMP=$(date +%Y%m%d-%H%M%S)
+for c in "${CONFIGS[@]}"; do
+    cp -a "/etc/snapper/configs/$c" "/etc/snapper/configs/$c.bak-$STAMP"
+    echo "  backed up /etc/snapper/configs/$c -> .bak-$STAMP"
+done
+
+log "Space before"
+df -h / | tail -1
+space_snapshot
+
+for c in "${CONFIGS[@]}"; do
+    log "Rewriting limits for config: $c"
+    snapper -c "$c" set-config \
+        TIMELINE_LIMIT_HOURLY="$NEW_HOURLY" \
+        TIMELINE_LIMIT_DAILY="$NEW_DAILY" \
+        TIMELINE_LIMIT_WEEKLY="$NEW_WEEKLY" \
+        TIMELINE_LIMIT_MONTHLY="$NEW_MONTHLY" \
+        TIMELINE_LIMIT_QUARTERLY="$NEW_QUARTERLY" \
+        TIMELINE_LIMIT_YEARLY="$NEW_YEARLY" \
+        NUMBER_LIMIT="$NEW_NUMBER_LIMIT" \
+        NUMBER_LIMIT_IMPORTANT="$NEW_NUMBER_LIMIT_IMPORTANT"
+
+    log "Running cleanup algorithms for: $c"
+    snapper -c "$c" cleanup timeline
+    snapper -c "$c" cleanup number
+done
+
+log "Waiting for the btrfs cleaner thread to release extents"
+# Deletion is asynchronous: snapper returns immediately, btrfs frees in the
+# background. Poll until free space stops moving.
+prev=0
+for i in $(seq 1 60); do
+    cur=$(btrfs filesystem usage -b / 2>/dev/null | awk '/Free \(estimated\)/{print $3}')
+    printf '  t=%3ds free=%s\n' "$((i*10))" "$(numfmt --to=iec "${cur:-0}")"
+    [[ $cur == "$prev" && $i -gt 3 ]] && { echo "  settled"; break; }
+    prev=$cur
+    sleep 10
+done
+
+log "Space after"
+df -h / | tail -1
+space_snapshot
+
+for c in "${CONFIGS[@]}"; do
+    echo "  $c: $(snapper -c "$c" list --columns number 2>/dev/null | tail -n +3 | grep -c .) snapshots remain"
+done
+
+cat <<EOF
+
+============================================================
+Done. Configs backed up as /etc/snapper/configs/*.bak-$STAMP
+
+If space did not move as much as expected, the data is pinned
+by snapshots you KEPT, not by the ones deleted. Run:
+
+    sudo $0 report --qgroups
+
+to see exclusive sizes and pick specific snapshots:
+
+    sudo snapper -c root delete <id> <id> ...
+============================================================
+EOF
