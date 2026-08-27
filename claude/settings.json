@@ -112,5 +112,6 @@
       "routine under kannar/ prefix: SSH build coordination with the Mac build slave (kannar@192.168.2.82 / kannar@192.168.0.14, pacific.local) for iOS local builds, and local paths under /home/kannar/git/myle/myle-mobile and ~/builds/"
     ]
   },
-  "voiceEnabled": true
+  "voiceEnabled": true,
+  "model": "claude-fable-5[1m]"
 }
