@@ -20,13 +20,6 @@ REARM_MIB=50   # MiB clear of a MiB threshold, likewise
 
 state=""       # "mount:level ..." -- level 0 ok, 1 low, 2 critical
 
-level_of() { # $1 mount -> last level, 0 if never seen
-	for e in $state; do
-		case "$e" in "$1":*) echo "${e#*:}"; return ;; esac
-	done
-	echo 0
-}
-
 # "% free", "KiB free" and a human Avail, from a single df call. Prints nothing
 # unless the row is usable: df reports Use% as "-" for zero-block filesystems,
 # and feeding that to $(( )) is a *fatal* shell error, not a skipped cycle.
@@ -57,7 +50,12 @@ while :; do
 		rest=${spec#*:}
 		low=${rest%%:*}
 		crit=${rest#*:}
-		prev=$(level_of "$m")
+		# last cycle's level for this mount, inlined rather than wrapped in a
+		# function so the lookup does not fork a subshell to return one digit
+		prev=0
+		for e in $state; do
+			case "$e" in "$m":*) prev=${e#*:} ;; esac
+		done
 
 		# df resolves any path to its containing filesystem, so an unmounted
 		# /boot would quietly report /'s numbers under /boot's name.

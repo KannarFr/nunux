@@ -142,9 +142,13 @@ button:hover {
     }
 }
 
-/* Using steps() instead of linear as a timing function to limit cpu usage */
-#battery.critical:not(.charging) {
-    background-color: #f53c3c;
+/* Every "this tile is alarming" state shares one animation; the tiles differ
+   only in background, and #disk in how long it runs (see below).
+   Using steps() instead of linear as a timing function to limit cpu usage */
+#battery.critical:not(.charging),
+#memory.blink,
+#disk.blink,
+#disk.critical {
     color: #ffffff;
     animation-name: blink;
     animation-duration: 0.5s;
@@ -152,6 +156,8 @@ button:hover {
     animation-iteration-count: infinite;
     animation-direction: alternate;
 }
+
+#battery.critical:not(.charging) { background-color: #f53c3c; }
 
 #power-profiles-daemon {
     padding-right: 15px;
@@ -221,34 +227,20 @@ label:focus {
 
 #memory          { background-color: #3a8a3a; }
 #memory.warning  { background-color: #cc6a1a; }
-#memory.blink {
-    background-color: #c83232;
-    color: #ffffff;
-    animation-name: blink;
-    animation-duration: 0.5s;
-    animation-timing-function: steps(12);
-    animation-iteration-count: infinite;
-    animation-direction: alternate;
-}
+#memory.blink    { background-color: #c83232; }
 
-#disk          { background-color: #3a8a3a; }
-#disk.warning  { background-color: #cc6a1a; }
-#disk.critical { background-color: #8b1a1a; }
+#disk            { background-color: #3a8a3a; }
+#disk.warning    { background-color: #cc6a1a; }
+#disk.blink      { background-color: #c83232; }
+#disk.critical   { background-color: #8b1a1a; }
 
-/* Bounded, unlike the other blink rules on this bar. #battery.critical stops
-   when you plug in and #memory.blink stops when the spike passes, but a full
-   disk clears only when a human deletes something -- which can be days. The
-   animation runs ~10s to catch the eye, then settles on the rule's own red,
-   which is the signal that actually matters. Motion at 22 repaints/s is not
-   free on a panel this host already fights page-flip errors on. */
-#disk.blink, #disk.critical {
-    color: #ffffff;
-    animation-name: blink;
-    animation-duration: 0.5s;
-    animation-timing-function: steps(12);
-    animation-iteration-count: 20;
-    animation-direction: alternate;
-}
+/* Bounded, unlike the two states above that share the animation. #battery
+   .critical stops when you plug in and #memory.blink stops when the spike
+   passes, but a full disk clears only when a human deletes something -- which
+   can be days. ~10s of motion catches the eye, then it settles on the solid
+   red, which is the signal that actually matters. Motion at 22 repaints/s is
+   not free on a panel this host already fights page-flip errors on. */
+#disk.blink, #disk.critical { animation-iteration-count: 20; }
 #disk.blink { background-color: #c83232; }
 
 #custom-backlight {

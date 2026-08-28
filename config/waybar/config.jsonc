@@ -149,9 +149,9 @@
         "format": "{swapUsed:0.1f}G {swapPercentage}%",
         "tooltip-format": "Swap: {swapUsed:0.1f}/{swapTotal:0.1f}GiB"
     },
-    // Root filesystem only: /home, /var/log and /var/cache/pacman/pkg are btrfs
-    // subvolumes of the same device, so one tile covers all four. /boot is left
-    // to bin/disk-watch, which notifies on both.
+    // Root filesystem only -- one tile legitimately covers four mounts, and
+    // /boot deliberately has none; bin/disk-watch's header explains both, and
+    // is where the mount list actually lives.
     //
     // Display and thresholds are both {percentage_used} on purpose. waybar
     // derives percentage_used from statvfs f_bfree but percentage_free from
