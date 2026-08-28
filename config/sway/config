@@ -31,8 +31,13 @@ exec swayidle -w \
           timeout 3600 'swaylock -f -c 000000' \
           timeout 3900 'swaymsg "output * power off"' resume 'swaymsg "output * power on"' \
           before-sleep 'swaylock -f -c 000000'
-exec $bin/battery-watch
-exec $bin/disk-watch
+# battery-watch and disk-watch are user units, not bare `exec` loops: both are
+# infinite loops whose death is otherwise silent, and earlyoom on this host
+# kills per-process, so a stray `sh` is precisely what it picks off during the
+# memory or disk pressure they exist to report on. Restart=always brings them
+# back, and `systemctl --user status` plus the journal make a failure visible.
+# Started rather than enabled, for the same reason as yubikey-glow below.
+exec systemctl --user start battery-watch.service disk-watch.service
 # yubikey-glow: rainbow screen-edge glow while an OpenPGP/YubiKey touch is pending
 # (reads yubikey-touch-detector's socket; detector runs as a user service).
 # Run as a user unit so a crash self-recovers (Restart=on-failure); started here

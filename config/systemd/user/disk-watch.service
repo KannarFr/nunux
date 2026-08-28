@@ -1,0 +1,20 @@
+[Unit]
+Description=Low disk space watcher (warns via swaync before / or the ESP fills)
+
+[Service]
+Type=simple
+# No ordering on the notification daemon: swaync ships a D-Bus activation file
+# owning org.freedesktop.Notifications, so an early notify-send activates it
+# rather than failing. DBUS_SESSION_BUS_ADDRESS is already in the user manager's
+# own environment, so unlike yubikey-glow this needs nothing from sway's
+# `systemctl --user import-environment`.
+ExecStart=%h/git/kannar/nunux/bin/disk-watch
+# Restart=always rather than on-failure: the script is an infinite loop with no
+# successful exit, and the likeliest thing to end it is earlyoom picking off a
+# stray `sh` during exactly the pressure event it exists to report on -- which
+# arrives as SIGKILL, not a nonzero status.
+Restart=always
+RestartSec=10
+
+# Not enabled on a target: graphical-session.target isn't activated on this box,
+# so sway starts the unit explicitly. No [Install] section by design.

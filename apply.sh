@@ -53,6 +53,8 @@ MAP=(
   "config/systemd/user/tcc-snapshot.service   $HOME/.config/systemd/user/tcc-snapshot.service"
   "config/systemd/user/tcc-snapshot.path      $HOME/.config/systemd/user/tcc-snapshot.path"
   "config/systemd/user/yubikey-glow.service   $HOME/.config/systemd/user/yubikey-glow.service"
+  "config/systemd/user/battery-watch.service  $HOME/.config/systemd/user/battery-watch.service"
+  "config/systemd/user/disk-watch.service     $HOME/.config/systemd/user/disk-watch.service"
   "claude/statusline.sh    $HOME/.claude/statusline.sh"
   "claude/settings.json    $HOME/.claude/settings.json"
   "claude/commands         $HOME/.claude/commands"

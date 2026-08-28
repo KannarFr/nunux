@@ -1,0 +1,13 @@
+[Unit]
+Description=Low battery watcher (warns, then suspends on critical)
+
+[Service]
+Type=simple
+ExecStart=%h/git/kannar/nunux/bin/battery-watch
+# See disk-watch.service: infinite loop, no successful exit, and a SIGKILL from
+# earlyoom is the expected way for it to die.
+Restart=always
+RestartSec=10
+
+# Not enabled on a target: graphical-session.target isn't activated on this box,
+# so sway starts the unit explicitly. No [Install] section by design.
