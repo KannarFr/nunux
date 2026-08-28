@@ -65,6 +65,11 @@
     "stripe@claude-plugins-official": true,
     "rust-analyzer-lsp@claude-plugins-official": true
   },
+  "modelSettings": {
+    "claude-opus-5": {
+      "effortLevel": "medium"
+    }
+  },
   "tui": "fullscreen",
   "voice": {
     "enabled": true,
@@ -112,6 +117,5 @@
       "routine under kannar/ prefix: SSH build coordination with the Mac build slave (kannar@192.168.2.82 / kannar@192.168.0.14, pacific.local) for iOS local builds, and local paths under /home/kannar/git/myle/myle-mobile and ~/builds/"
     ]
   },
-  "voiceEnabled": true,
-  "model": "claude-fable-5[1m]"
+  "voiceEnabled": true
 }
