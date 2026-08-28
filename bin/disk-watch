@@ -1,0 +1,59 @@
+#!/bin/sh
+# Warn when a filesystem is running out of space. Started once from sway
+# (exec), like battery-watch, so it runs for the life of the session.
+#
+# Only / and /boot are checked: /home, /var/log and /var/cache/pacman/pkg are
+# btrfs subvolumes of the same device as /, so df just repeats its numbers.
+
+MOUNTS="/ /boot"
+LOW=10        # notify at/below this % free
+CRIT=5        # critical notification at/below this % free
+REARM=2       # % free clear of a threshold before that level can fire again
+INTERVAL=300
+
+state=""      # "mount:level ..." — level 0 ok, 1 low, 2 critical
+
+level_of() { # $1 mount -> last level, 0 if never seen
+	for e in $state; do
+		case "$e" in "$1":*) echo "${e#*:}"; return ;; esac
+	done
+	echo 0
+}
+
+while :; do
+	next=""
+	for m in $MOUNTS; do
+		prev=$(level_of "$m")
+		use=$(df -P "$m" 2>/dev/null | awk 'NR==2 {print $5}' | tr -d '%')
+		if [ -z "$use" ]; then          # not mounted right now, keep the old level
+			next="$next $m:$prev"
+			continue
+		fi
+		free=$((100 - use))
+		avail=$(df -Ph "$m" 2>/dev/null | awk 'NR==2 {print $4}')
+
+		lvl=0
+		[ "$free" -le "$LOW" ] && lvl=1
+		[ "$free" -le "$CRIT" ] && lvl=2
+
+		# A filesystem sitting right on a threshold would otherwise notify every
+		# cycle, so only drop back down once free climbs clear of it.
+		if [ "$lvl" -lt "$prev" ]; then
+			case "$prev" in
+			2) [ "$free" -gt $((CRIT + REARM)) ] || lvl=2 ;;
+			1) [ "$free" -gt $((LOW + REARM)) ] || lvl=1 ;;
+			esac
+		fi
+
+		if [ "$lvl" -gt "$prev" ]; then
+			if [ "$lvl" -eq 2 ]; then
+				notify-send -u critical "Disk critical: $m ${free}% free" "$avail left."
+			else
+				notify-send -u normal "Disk low: $m ${free}% free" "$avail left."
+			fi
+		fi
+		next="$next $m:$lvl"
+	done
+	state="$next"
+	sleep "$INTERVAL"
+done
