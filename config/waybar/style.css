@@ -231,8 +231,16 @@ label:focus {
     animation-direction: alternate;
 }
 
-#disk {
-    background-color: #964B00;
+#disk          { background-color: #3a8a3a; }
+#disk.warning  { background-color: #cc6a1a; }
+#disk.blink {
+    background-color: #c83232;
+    color: #ffffff;
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: steps(12);
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
 }
 
 #custom-backlight {

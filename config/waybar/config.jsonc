@@ -26,6 +26,7 @@
         "custom/cpu-temp",
         "memory#ram",
         "memory#zram",
+        "disk",
         "custom/backlight",
         "custom/fan",
         "battery",
@@ -147,6 +148,22 @@
         "interval": 5,
         "format": "{swapUsed:0.1f}G {swapPercentage}%",
         "tooltip-format": "Swap: {swapUsed:0.1f}/{swapTotal:0.1f}GiB"
+    },
+    // Root filesystem only: /home, /var/log and /var/cache/pacman/pkg are btrfs
+    // subvolumes of the same device, so one tile covers all four. /boot is left
+    // to bin/disk-watch, which notifies on both.
+    // Thresholds are % *used* and mirror disk-watch's: blink at 90 (10% free,
+    // the notification point), orange at 85 as a heads-up before it.
+    "disk": {
+        "interval": 30,
+        "path": "/",
+        "unit": "GiB",
+        "format": "{specific_free:0.0f}G ",
+        "tooltip-format": "{used} used of {total} ({percentage_used}%)\n{free} free on {path}",
+        "states": {
+            "warning": 85,
+            "blink": 90
+        }
     },
     "temperature": {
         // "thermal-zone": 2,
