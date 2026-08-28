@@ -233,15 +233,23 @@ label:focus {
 
 #disk          { background-color: #3a8a3a; }
 #disk.warning  { background-color: #cc6a1a; }
-#disk.blink {
-    background-color: #c83232;
+#disk.critical { background-color: #8b1a1a; }
+
+/* Bounded, unlike the other blink rules on this bar. #battery.critical stops
+   when you plug in and #memory.blink stops when the spike passes, but a full
+   disk clears only when a human deletes something -- which can be days. The
+   animation runs ~10s to catch the eye, then settles on the rule's own red,
+   which is the signal that actually matters. Motion at 22 repaints/s is not
+   free on a panel this host already fights page-flip errors on. */
+#disk.blink, #disk.critical {
     color: #ffffff;
     animation-name: blink;
     animation-duration: 0.5s;
     animation-timing-function: steps(12);
-    animation-iteration-count: infinite;
+    animation-iteration-count: 20;
     animation-direction: alternate;
 }
+#disk.blink { background-color: #c83232; }
 
 #custom-backlight {
     background-color: #90b1b1;

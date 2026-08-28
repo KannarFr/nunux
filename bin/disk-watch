@@ -2,16 +2,23 @@
 # Warn when a filesystem is running out of space. Started once from sway
 # (exec), like battery-watch, so it runs for the life of the session.
 #
-# Only / and /boot are checked: /home, /var/log and /var/cache/pacman/pkg are
+# Only / and /boot are watched: /home, /var/log and /var/cache/pacman/pkg are
 # btrfs subvolumes of the same device as /, so df just repeats its numbers.
+#
+# Thresholds are per-mount because a percentage does not survive the trip from
+# a 831 GiB root to a 1 GiB ESP: 5% of /boot is 51 MiB, less than one of the
+# ~70 MiB unified kernel images mkinitcpio writes there, so a percentage alarm
+# would first speak up long after the disk was too full to take a kernel
+# upgrade. /boot gets absolute floors instead, sized for the new UKI plus the
+# arch-linux-prev.efi backup that CLAUDE.md's UKI bullet says to keep.
+#   mount:low:critical -- values ending in M are MiB free, bare numbers % free
+WATCH="/:10:5 /boot:250M:150M"
 
-MOUNTS="/ /boot"
-LOW=10        # notify at/below this % free
-CRIT=5        # critical notification at/below this % free
-REARM=2       # % free clear of a threshold before that level can fire again
-INTERVAL=300
+INTERVAL=120   # battery-watch's cadence; disk fills faster than a battery drains
+REARM_PCT=2    # % clear of a % threshold before it can alert again
+REARM_MIB=50   # MiB clear of a MiB threshold, likewise
 
-state=""      # "mount:level ..." — level 0 ok, 1 low, 2 critical
+state=""       # "mount:level ..." -- level 0 ok, 1 low, 2 critical
 
 level_of() { # $1 mount -> last level, 0 if never seen
 	for e in $state; do
@@ -20,38 +27,80 @@ level_of() { # $1 mount -> last level, 0 if never seen
 	echo 0
 }
 
+# "% free", "KiB free" and a human Avail, from a single df call. Prints nothing
+# unless the row is usable: df reports Use% as "-" for zero-block filesystems,
+# and feeding that to $(( )) is a *fatal* shell error, not a skipped cycle.
+probe() { # $1 mount
+	df -Pk "$1" 2>/dev/null | awk '
+		NR == 2 {
+			sub(/%$/, "", $5)
+			if ($5 !~ /^[0-9]+$/) exit
+			printf "%d %d %s\n", 100 - $5, $4,
+				($4 >= 1048576 ? sprintf("%.0fG", $4 / 1048576) \
+				               : sprintf("%.0fM", $4 / 1024))
+		}'
+}
+
+# Is free space at or under $1, which is either "5" (% free) or "150M" (MiB)?
+# $4 widens the limit, which is how the re-arm hysteresis is expressed.
+past() { # $1 limit  $2 free%  $3 freeKiB  $4 slack
+	case "$1" in
+	*M) [ "$3" -le $(( (${1%M} + $4) * 1024 )) ] ;;
+	*)  [ "$2" -le $(( $1 + $4 )) ] ;;
+	esac
+}
+
 while :; do
 	next=""
-	for m in $MOUNTS; do
+	for spec in $WATCH; do
+		m=${spec%%:*}
+		rest=${spec#*:}
+		low=${rest%%:*}
+		crit=${rest#*:}
 		prev=$(level_of "$m")
-		use=$(df -P "$m" 2>/dev/null | awk 'NR==2 {print $5}' | tr -d '%')
-		if [ -z "$use" ]; then          # not mounted right now, keep the old level
-			next="$next $m:$prev"
-			continue
-		fi
-		free=$((100 - use))
-		avail=$(df -Ph "$m" 2>/dev/null | awk 'NR==2 {print $4}')
+
+		# df resolves any path to its containing filesystem, so an unmounted
+		# /boot would quietly report /'s numbers under /boot's name.
+		mountpoint -q "$m" || { next="$next $m:$prev"; continue; }
+
+		set -- $(probe "$m")
+		[ $# -eq 3 ] || { next="$next $m:$prev"; continue; }
+		free=$1 kib=$2 avail=$3
 
 		lvl=0
-		[ "$free" -le "$LOW" ] && lvl=1
-		[ "$free" -le "$CRIT" ] && lvl=2
+		past "$low"  "$free" "$kib" 0 && lvl=1
+		past "$crit" "$free" "$kib" 0 && lvl=2
 
-		# A filesystem sitting right on a threshold would otherwise notify every
-		# cycle, so only drop back down once free climbs clear of it.
+		# Hold a level until free climbs clear of it, so a filesystem parked on
+		# a threshold does not re-alert every cycle. Walked top-down so a drop
+		# from critical still has to clear the low band on its way out, instead
+		# of falling straight to 0 and re-arming a warning it never left.
 		if [ "$lvl" -lt "$prev" ]; then
-			case "$prev" in
-			2) [ "$free" -gt $((CRIT + REARM)) ] || lvl=2 ;;
-			1) [ "$free" -gt $((LOW + REARM)) ] || lvl=1 ;;
-			esac
-		fi
-
-		if [ "$lvl" -gt "$prev" ]; then
-			if [ "$lvl" -eq 2 ]; then
-				notify-send -u critical "Disk critical: $m ${free}% free" "$avail left."
-			else
-				notify-send -u normal "Disk low: $m ${free}% free" "$avail left."
+			cs=$REARM_PCT; ls=$REARM_PCT
+			case "$crit" in *M) cs=$REARM_MIB ;; esac
+			case "$low"  in *M) ls=$REARM_MIB ;; esac
+			if [ "$prev" -ge 2 ] && past "$crit" "$free" "$kib" "$cs"; then
+				lvl=2
+			elif [ "$prev" -ge 1 ] && past "$low" "$free" "$kib" "$ls"; then
+				lvl=1
 			fi
 		fi
+
+		# Critical repeats every cycle: level 2 is the top of the scale, so
+		# alerting only on escalation would go silent for the entire stretch
+		# between "5% free" and "full" -- the part that actually matters. The
+		# synchronous hint (as in bin/osd) makes repeats replace the previous
+		# toast in place rather than pile up. Low alerts once per crossing but
+		# at critical urgency: swaync expires -u normal after 10s (config.json
+		# "timeout": 10) and this one has to survive being missed.
+		if [ "$lvl" -eq 2 ]; then
+			notify-send -u critical \
+				-h "string:x-canonical-private-synchronous:disk-$m" \
+				"Disk critical: $m" "$avail left (${free}% free)."
+		elif [ "$lvl" -eq 1 ] && [ "$prev" -lt 1 ]; then
+			notify-send -u critical "Disk low: $m" "$avail left (${free}% free)."
+		fi
+
 		next="$next $m:$lvl"
 	done
 	state="$next"

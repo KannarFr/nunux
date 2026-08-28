@@ -152,17 +152,26 @@
     // Root filesystem only: /home, /var/log and /var/cache/pacman/pkg are btrfs
     // subvolumes of the same device, so one tile covers all four. /boot is left
     // to bin/disk-watch, which notifies on both.
-    // Thresholds are % *used* and mirror disk-watch's: blink at 90 (10% free,
-    // the notification point), orange at 85 as a heads-up before it.
+    //
+    // Display and thresholds are both {percentage_used} on purpose. waybar
+    // derives percentage_used from statvfs f_bfree but percentage_free from
+    // f_bavail, and `states` are only ever compared against percentage_used,
+    // so showing free% while thresholding on used% left ~3 points of btrfs
+    // reserve between the number on the bar and the number driving the colour
+    // -- the tile blinked at 8% shown, not 10%. One field throughout fixes it.
+    // These are still not df's percentages (df divides by used+avail), so the
+    // tile trails disk-watch's alert by ~2 points: close, deliberately not
+    // claimed as the same point.
     "disk": {
         "interval": 30,
         "path": "/",
         "unit": "GiB",
-        "format": "{specific_free:0.0f}G {percentage_free}% ",
+        "format": "{specific_free:0.0f}G {percentage_used}% ",
         "tooltip-format": "{used} used of {total} ({percentage_used}%)\n{free} free on {path}",
         "states": {
             "warning": 85,
-            "blink": 90
+            "blink": 90,
+            "critical": 95
         }
     },
     "temperature": {
