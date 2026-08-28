@@ -158,7 +158,7 @@
         "interval": 30,
         "path": "/",
         "unit": "GiB",
-        "format": "{specific_free:0.0f}G ",
+        "format": "{specific_free:0.0f}G {percentage_free}% ",
         "tooltip-format": "{used} used of {total} ({percentage_used}%)\n{free} free on {path}",
         "states": {
             "warning": 85,
