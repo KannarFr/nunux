@@ -82,7 +82,9 @@
     "allow": [
       "$defaults",
       "Bash(adb reverse:*) in /home/kannar/git/myle/myle-mobile — routine port-forward re-apply per CLAUDE.md / android-reverse.sh",
-      "Bash(npx eas-cli whoami) in /home/kannar/git/myle/myle-mobile — routine auth check before builds"
+      "Bash(npx eas-cli whoami) in /home/kannar/git/myle/myle-mobile — routine auth check before builds",
+      "Bash(clever status:*) — read-only app state (running/scaling/deployed commit), changes nothing",
+      "Bash(clever activity:*) — read-only deployment history, changes nothing"
     ],
     "soft_deny": [
       "$defaults",
