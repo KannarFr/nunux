@@ -1,0 +1,33 @@
+# kanshi — per-display-arrangement output config.
+#
+# kanshi watches for hotplug and applies the first profile whose set of
+# connected outputs matches exactly, so plugging the monitor in is enough.
+#
+# Outputs are matched by "make model serial" rather than by connector name:
+# HDMI-A-1 becomes HDMI-A-2 after a suspend/replug cycle, the EDID string
+# does not. eDP-1 is the exception — a builtin panel's connector never moves,
+# and its serial reads back as "Unknown", which is not a useful key.
+#
+# Scale is what this file exists for. Logical DPI = physical DPI / scale, and
+# the two panels only feel alike when that number matches:
+#   eDP-1     15.3" 2560x1600 = 197 dpi / 1.4 = 141 dpi logical
+#   AOC U27G3X 27" 3840x2160  = 163 dpi / 1.5 = 109 dpi logical
+# The external is deliberately *coarser* than the laptop, not equal to it —
+# it sits ~2x further away, so matching dpi on paper reads as too small.
+# Drop it to 1.25 (130 dpi) if 1.5 feels chunky.
+#
+# Modes are left unspecified on purpose: a `mode` line that does not match an
+# EDID mode exactly makes kanshi reject the whole profile, and sway's preferred
+# mode is already right on both panels. Positions are in *logical* pixels, so
+# eDP-1's 2560/1.4 = 1828 is where the external starts.
+#
+# Edit, then `kanshictl reload` — a sway reload does not restart kanshi.
+
+profile docked {
+	output eDP-1 enable position 0,0 scale 1.4
+	output "AOC U27G3X 1322131231233" enable position 1828,0 scale 1.5
+}
+
+profile laptop {
+	output eDP-1 enable position 0,0 scale 1.4
+}

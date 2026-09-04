@@ -41,6 +41,7 @@ MAP=(
   "gpg-agent.conf          $HOME/.gnupg/gpg-agent.conf"
   "config/sway/config      $HOME/.config/sway/config"
   "config/gammastep/config.ini  $HOME/.config/gammastep/config.ini"
+  "config/kanshi/config    $HOME/.config/kanshi/config"
   "config/swaylock/config  $HOME/.config/swaylock/config"
   "config/swaync/config.json  $HOME/.config/swaync/config.json"
   "config/waybar           $HOME/.config/waybar"
