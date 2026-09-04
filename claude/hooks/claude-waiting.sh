@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
-# Claude Code hook (Notification + Stop + SubagentStop): when Claude wants attention, show ONE
+# Claude Code hook (Notification + Stop): when Claude wants attention, show ONE
 # Sway notification (via swaync). Clicking it focuses the terminal window + the
 # tmux pane Claude runs in. Behaviour:
 #   - skipped when that window is already focused (no spam while you're looking),
 #   - only ONE notification per tmux pane is kept alive (--replace-id),
 #   - claude-dismiss.sh closes it on the next UserPromptSubmit, so it goes away
 #     the moment you respond — by any means, not just by clicking it.
-# Wired to the Notification, Stop and SubagentStop hooks in claude/settings.json.
+# Wired to the Notification and Stop hooks in claude/settings.json. SubagentStop is
+# deliberately NOT wired: a finished subagent is not your turn, only the main agent
+# going idle is. The SubagentStop branches below are kept so re-adding the hook to
+# settings.json is the only change needed to bring the ping back.
 
 # --- read hook JSON from stdin (may be empty); one jq pass, line per field -----
 # Newline-separated (not @tsv): with a tab IFS, read collapses a leading empty
