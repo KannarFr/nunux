@@ -1,7 +1,12 @@
 # kanshi — per-display-arrangement output config.
 #
-# kanshi watches for hotplug and applies the first profile whose set of
-# connected outputs matches exactly, so plugging the monitor in is enough.
+# kanshi watches for hotplug and applies the first profile all of whose named
+# outputs are connected, so plugging the monitor in is enough.
+#
+# Matching is a *superset* test, not an exact one, and the first match in file
+# order wins -- so `laptop` (eDP-1 alone) also matches while the AOC is plugged
+# in, and only its position below `docked` keeps it from firing. Keep the most
+# specific profile first; never sort this file.
 #
 # Outputs are matched by "make model serial" rather than by connector name:
 # HDMI-A-1 becomes HDMI-A-2 after a suspend/replug cycle, the EDID string
