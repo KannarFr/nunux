@@ -49,6 +49,7 @@ MAP=(
   "config/htop/htoprc      $HOME/.config/htop/htoprc"
   "config/mimeapps.list    $HOME/.config/mimeapps.list"
   "config/wireplumber/wireplumber.conf.d/51-bluez.conf  $HOME/.config/wireplumber/wireplumber.conf.d/51-bluez.conf"
+  "config/wireplumber/wireplumber.conf.d/52-alsa-names.conf  $HOME/.config/wireplumber/wireplumber.conf.d/52-alsa-names.conf"
   "config/systemd/user/restic-backup.service  $HOME/.config/systemd/user/restic-backup.service"
   "config/systemd/user/restic-backup.timer    $HOME/.config/systemd/user/restic-backup.timer"
   "config/systemd/user/tcc-snapshot.service   $HOME/.config/systemd/user/tcc-snapshot.service"
