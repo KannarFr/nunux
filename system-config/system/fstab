@@ -18,5 +18,3 @@ UUID=83634323-b4ab-453f-b76f-1d87c61cdfb7	/var/log  	btrfs     	rw,relatime,comp
 UUID=E735-164F      	/boot     	vfat      	rw,relatime,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,utf8,errors=remount-ro	0 2
 
 
-# /swap/swapfile: low-priority disk backstop behind zram0 (pri=100)
-/swap/swapfile	none	swap	defaults,pri=10,nofail	0 0
