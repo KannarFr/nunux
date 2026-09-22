@@ -3,8 +3,10 @@
 claude-code
 clever-tools-bin
 codeburn
+cura-bin
 germinal
 gitlab-inbox-bin
+google-chrome
 handy-bin
 hollywood
 neofetch
@@ -12,6 +14,7 @@ nitrogen
 piper-tts-bin
 slack-desktop
 stripe-cli
+teams-for-linux
 vban-git
 visual-studio-code-bin
 yay
