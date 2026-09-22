@@ -35,3 +35,4 @@ x-scheme-handler/webcal=userapp-Thunderbird-9LZJV2.desktop;
 x-scheme-handler/webcals=userapp-Thunderbird-9LZJV2.desktop;
 pdf=org.mozilla.Thunderbird.desktop;
 x-scheme-handler/net.thunderbird=userapp-Thunderbird-KTGTS3.desktop;
+text/csv=dev.zed.Zed.desktop;
