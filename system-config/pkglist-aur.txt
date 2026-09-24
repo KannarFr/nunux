@@ -17,4 +17,5 @@ stripe-cli
 teams-for-linux
 vban-git
 visual-studio-code-bin
+wifiman-desktop
 yay
