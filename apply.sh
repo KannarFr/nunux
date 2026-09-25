@@ -62,6 +62,7 @@ MAP=(
   "claude/commands         $HOME/.claude/commands"
   "claude/agents           $HOME/.claude/agents"
   "claude/hooks            $HOME/.claude/hooks"
+  "claude/skills/gitlab-mail  $HOME/.claude/skills/gitlab-mail"
   "codex/config.toml       $HOME/.codex/config.toml"
   "codex/hooks             $HOME/.codex/hooks"
 )

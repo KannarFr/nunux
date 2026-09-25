@@ -40,6 +40,7 @@ Two repo regions: home dotfiles keep their bare names at the repo root, and ever
 | `claude/settings.json` | `~/.claude/settings.json` (user-level Claude Code config) |
 | `claude/commands/` | `~/.claude/commands` (user-defined slash commands) |
 | `claude/agents/` | `~/.claude/agents` (user-defined subagents) |
+| `claude/skills/gitlab-mail/` | `~/.claude/skills/gitlab-mail` (Thunderbird GitLab-mail triage skill + IMAP scripts) |
 
 Snapshots / not symlinked (read-only references; do not assume edits here propagate):
 
