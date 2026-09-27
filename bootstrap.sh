@@ -117,7 +117,31 @@ enable_usr swaync.service vban-emitter.service vban-receptor.service \
            wireplumber.service pipewire.socket pipewire-pulse.socket gnome-keyring-daemon.socket \
            restic-backup.timer
 
-# 7. default GDM session ----------------------------------------------------
+# 7. USBGuard: block unknown USB devices (BadUSB / fake keyboards) ----------
+# generate-policy allowlists whatever is plugged in NOW — on a desktop that
+# includes the keyboard, so it must be connected. Never regenerate over an
+# existing allowlist: it would drop devices approved since.
+say "USBGuard (block unknown USB devices)"
+if ! unit_exists usbguard.service; then
+  warn "skip usbguard (not installed)"
+elif sudo test -s /etc/usbguard/rules.conf; then
+  echo "  already configured (rules.conf exists) — leaving the allowlist alone"
+else
+  echo "  Plug in every USB device you use first (keyboard, dock, mic, …):"
+  echo "  whatever is connected now is allowlisted, anything else gets blocked."
+  if ask "Generate the allowlist from connected devices and enable USBGuard?"; then
+    sudo install -Dm600 -t /etc/usbguard/rules.d "$SC"/system/usbguard/rules.d/*.conf
+    sudo usbguard generate-policy | sudo install -m600 /dev/stdin /etc/usbguard/rules.conf
+    # read-only IPC for the user: can see blocked devices, cannot approve them
+    sudo usbguard add-user "$USER" --devices list,listen --policy list --exceptions listen \
+      || warn "usbguard add-user failed — 'usbguard list-devices' will need sudo"
+    sudo systemctl enable --now usbguard.service
+  else
+    warn "skipped USBGuard — any USB device (incl. a fake keyboard) is trusted on plug-in"
+  fi
+fi
+
+# 8. default GDM session ----------------------------------------------------
 # gdm depends on gnome-shell, so a gnome.desktop session exists and GDM
 # defaults to it. Pin sway as this user's session in AccountsService so login
 # lands in sway instead of GNOME. (Host-local state under /var/lib; the gear
@@ -142,7 +166,7 @@ SystemAccount=false
 EOF
 fi
 
-# 8. Vim / Vundle -----------------------------------------------------------
+# 9. Vim / Vundle -----------------------------------------------------------
 say "Vim plugins (Vundle)"
 vundle="$HOME/.vim/bundle/Vundle.vim"
 [ -d "$vundle" ] || git clone https://github.com/VundleVim/Vundle.vim.git "$vundle"
@@ -154,14 +178,14 @@ coc="$HOME/.vim/bundle/coc.nvim"
 vim +PluginInstall +qall </dev/null >/dev/null 2>&1 && echo "  plugins installed" \
   || warn "run ':PluginInstall' inside vim by hand"
 
-# 9. tmux / tpm -------------------------------------------------------------
+# 10. tmux / tpm -------------------------------------------------------------
 say "tmux plugins (tpm)"
 tpm="$HOME/.tmux/plugins/tpm"
 [ -d "$tpm" ] || git clone https://github.com/tmux-plugins/tpm.git "$tpm"
 "$tpm/bin/install_plugins" >/dev/null 2>&1 && echo "  plugins installed" \
   || warn "open tmux and press 'prefix + I' to install plugins by hand"
 
-# 10. manual checklist ------------------------------------------------------
+# 11. manual checklist ------------------------------------------------------
 say "Done — remaining MANUAL steps (host-/secret-specific, not automated):"
 cat <<'EOF'
 

@@ -162,6 +162,7 @@ ttf-nerd-fonts-symbols
 ttf-roboto
 ttf-ubuntu-font-family
 unzip
+usbguard
 usbutils
 valkey
 vault
