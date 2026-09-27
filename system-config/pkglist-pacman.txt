@@ -140,6 +140,7 @@ swaybg
 swayidle
 swaylock
 swaync
+swayosd
 systemd-resolvconf
 tailscale
 terminus-font

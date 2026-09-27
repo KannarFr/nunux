@@ -18,6 +18,8 @@ set $bin /home/kannar/git/kannar/nunux/bin
 
 exec waybar
 exec swaync
+# volume/brightness popup; `exec`, not exec_always — a reload would start a second server
+exec swayosd-server
 # gammastep (blue-light filter, config at ~/.config/gammastep/config.ini)
 # toggle on/off with $mod+Shift+n
 exec gammastep
@@ -301,14 +303,13 @@ bindsym $mod+r mode "resize"
 #
 # Utilities:
 #
-    # Special keys to adjust volume via PulseAudio
-    bindsym --locked XF86AudioMute exec $bin/osd vol-mute
-    bindsym --locked XF86AudioLowerVolume exec $bin/osd vol-down
-    bindsym --locked XF86AudioRaiseVolume exec $bin/osd vol-up
-    bindsym --locked XF86AudioMicMute exec $bin/osd mic-mute
-    # Special keys to adjust brightness via brightnessctl
-    bindsym --locked XF86MonBrightnessDown exec $bin/osd bright-down
-    bindsym --locked XF86MonBrightnessUp exec $bin/osd bright-up
+    # Special keys for volume / mic / brightness, with swayosd's popup
+    bindsym --locked XF86AudioMute exec swayosd-client --output-volume mute-toggle
+    bindsym --locked XF86AudioLowerVolume exec swayosd-client --output-volume lower
+    bindsym --locked XF86AudioRaiseVolume exec swayosd-client --output-volume raise
+    bindsym --locked XF86AudioMicMute exec swayosd-client --input-volume mute-toggle
+    bindsym --locked XF86MonBrightnessDown exec swayosd-client --brightness lower
+    bindsym --locked XF86MonBrightnessUp exec swayosd-client --brightness raise
     # Special key to take a screenshot (whole screen to clipboard)
     bindsym Print exec grimshot --notify copy screen
 
@@ -334,6 +335,8 @@ for_window [window_type="dialog"] floating enable
 
 # Picture-in-picture: keep it floating and visible across workspaces
 for_window [title="Picture-in-Picture"] floating enable, sticky enable
+# waybar's sound tile opens pavucontrol: float it as a popup, not a tile
+for_window [app_id="org.pulseaudio.pavucontrol"] floating enable, resize set 720 520, move position 100 ppt 0 ppt, move left 730 px, move down 40 px
 
 include @sysconfdir@/sway/config.d/*
 
