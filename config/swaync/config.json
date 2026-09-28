@@ -24,7 +24,7 @@
   "relative-timestamps": true,
   "control-center-width": 500,
   "control-center-height": 600,
-  "notification-window-width": 500,
+  "notification-window-width": 580,
   "notification-window-preferred-output": "eDP-1",
   "control-center-preferred-output": "eDP-1",
   "keyboard-shortcuts": true,

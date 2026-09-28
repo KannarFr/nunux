@@ -3,24 +3,21 @@
 # (replacing this pane's previous one), records its id so claude-dismiss.sh can
 # close it, and — only if the notification is actually CLICKED — focuses the
 # terminal window and selects the tmux pane.
-# Inputs via env: CLAUDE_CON CLAUDE_PANE CLAUDE_MSG CLAUDE_DIR CLAUDE_PREV CLAUDE_STATE.
+# Inputs via env: CLAUDE_CON CLAUDE_PANE CLAUDE_DIR CLAUDE_PREV CLAUDE_STATE.
 set -u
 
 here="$(dirname "$(readlink -f "$0")")"
 . "$here/claude-focus-lib.sh"
 
-# Henri emblem shipped alongside this script in the repo.
-icon="$here/henri.png"
-[ -f "$icon" ] || icon=utilities-terminal
-
+# Kept to ONE line on purpose: no icon, no body, no action button — each of
+# those adds a row (the icon alone is ~64px tall). Clicking the notification
+# still fires the invisible "default" action, and $mod+g still focuses.
 args=(
   --app-name=claude
-  --icon="$icon"
   --urgency=critical
   --expire-time=0
   --print-id
   --action="default=Focus pane"
-  --action="focus=Focus pane"
 )
 [ -n "${CLAUDE_PREV:-}" ] && args+=(--replace-id "$CLAUDE_PREV")
 
@@ -30,7 +27,7 @@ args=(
 # then read the action. If there is no notification server the reads hit EOF and
 # we fall straight through — no loop, no spin.
 exec 3< <(notify-send "${args[@]}" \
-  "Claude · ${CLAUDE_DIR:-claude}" "${CLAUDE_MSG:-waiting for your input}" 2>/dev/null)
+  "Claude — ${CLAUDE_DIR:-claude}" 2>/dev/null)
 id=""; read -r id <&3
 # State file is 3 lines: notification id, sway con_id, tmux pane. The id lets
 # claude-dismiss.sh close it; con+pane let claude-focus.sh ($mod+g) jump here
@@ -40,7 +37,7 @@ id=""; read -r id <&3
 action=""; read -r action <&3   # blocks until the notification closes
 exec 3<&-
 
-# An invoked action focuses: body-click ("default") or the "Focus pane" button.
+# An invoked action focuses: a click fires "default".
 # ($mod+g no longer comes through here — claude-focus.sh focuses directly.)
 # Replace / dismiss / expire leave the action empty.
 [ -n "$action" ] || exit 0

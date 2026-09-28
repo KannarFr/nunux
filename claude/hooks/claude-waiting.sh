@@ -13,19 +13,13 @@
 
 # --- read hook JSON from stdin (may be empty); one jq pass, line per field -----
 # Newline-separated (not @tsv): with a tab IFS, read collapses a leading empty
-# field, so an empty .message would swallow the event name into msg.
+# field and shifts the rest. The notification shows only the session name, so
+# .message (the "reason") is deliberately not read.
 input="$(cat)"
-{ read -r msg; read -r event; } < <(
+{ read -r event; read -r transcript; } < <(
   printf '%s' "$input" \
-    | jq -r '.message // "", .hook_event_name // ""' 2>/dev/null
+    | jq -r '.hook_event_name // "", .transcript_path // ""' 2>/dev/null
 )
-if [ -z "$msg" ]; then
-  case "$event" in
-    Stop)         msg="Claude finished — waiting for your next message" ;;
-    SubagentStop) msg="A subagent finished — main task still running" ;;
-    *)            msg="Claude is waiting for your input" ;;
-  esac
-fi
 
 # --- which tmux pane is Claude in? --------------------------------------------
 pane="${TMUX_PANE:-}"
@@ -78,8 +72,20 @@ esac
 snd="$(find "$snddir" -name '*.wav' 2>/dev/null | shuf -n1)"
 [ -n "$snd" ] && paplay "$snd" >/dev/null 2>&1 &
 
-# --- project dir for a useful title -------------------------------------------
-dir="$(basename "${CLAUDE_PROJECT_DIR:-$PWD}")"
+# --- session name for the title ------------------------------------------------
+# The transcript carries the session's name: a "custom-title" entry from /rename
+# wins over the auto-generated "ai-title". Read newest-first (tac) so a rename
+# is picked up and we stop at the first hit. Falls back to the project dir.
+title() {
+  tac "$transcript" 2>/dev/null | grep -m1 "\"type\":\"$1\"" \
+    | jq -r '.customTitle // .aiTitle // empty' 2>/dev/null
+}
+dir=""
+if [ -n "${transcript:-}" ]; then
+  dir="$(title custom-title)"
+  [ -n "$dir" ] || dir="$(title ai-title)"
+fi
+[ -n "$dir" ] || dir="$(basename "${CLAUDE_PROJECT_DIR:-$PWD}")"
 
 # --- per-pane notification id, so we replace (not stack) and can dismiss later -
 key="${TMUX_PANE:-default}"; key="${key//[^A-Za-z0-9]/_}"
@@ -89,7 +95,7 @@ prev=""; [ -f "$state" ] && read -r prev < "$state"   # first line = noti id
 # --- fire the clickable notification, fully detached so the hook returns now ---
 # The helper blocks until the notification closes (clicked, replaced, or closed
 # by claude-dismiss.sh), so we run it in its own session and return immediately.
-CLAUDE_CON="$con" CLAUDE_PANE="$pane" CLAUDE_MSG="$msg" CLAUDE_DIR="$dir" \
+CLAUDE_CON="$con" CLAUDE_PANE="$pane" CLAUDE_DIR="$dir" \
 CLAUDE_PREV="$prev" CLAUDE_STATE="$state" \
   setsid -f "$HOME/.claude/hooks/claude-waiting-notify.sh" >/dev/null 2>&1
 
