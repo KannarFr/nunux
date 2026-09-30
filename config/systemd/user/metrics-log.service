@@ -1,0 +1,17 @@
+[Unit]
+Description=CPU / RAM / power timeseries logger (SQLite, no retention)
+Documentation=file:%h/git/kannar/nunux/bin/metrics-log
+
+[Service]
+Type=simple
+ExecStart=%h/git/kannar/nunux/bin/metrics-log
+# Same reasoning as disk-watch: an endless loop has no clean exit, and the
+# likely death is earlyoom's SIGKILL during the very pressure it should record.
+Restart=always
+RestartSec=10
+Nice=10
+
+# Unlike the sway-started watchers this needs no graphical session, so it hangs
+# off default.target and starts with the user manager.
+[Install]
+WantedBy=default.target

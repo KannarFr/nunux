@@ -115,7 +115,7 @@ fi
 say "Enabling user services"
 enable_usr swaync.service vban-emitter.service vban-receptor.service \
            wireplumber.service pipewire.socket pipewire-pulse.socket gnome-keyring-daemon.socket \
-           restic-backup.timer
+           restic-backup.timer metrics-log.service
 
 # 7. USBGuard: block unknown USB devices (BadUSB / fake keyboards) ----------
 # generate-policy allowlists whatever is plugged in NOW — on a desktop that

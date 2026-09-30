@@ -1,0 +1,144 @@
+#!/usr/bin/env python3
+# Append one row of CPU / RAM / power readings to a SQLite timeseries every
+# INTERVAL seconds, forever -- there is deliberately no retention: a row is
+# ~40 bytes, so a year at 15s is ~2.1M rows and well under 100 MB.
+#
+# Runs as a user unit (metrics-log.service); everything read here is
+# world-readable. The one root-only source, RAPL energy_uj (0400 since the
+# PLATYPUS side-channel fix), is not needed: amdgpu's PPT sensor reports the
+# whole APU package power (CPU cores + iGPU + SoC) and is readable as a user.
+#
+# What is NOT measurable on this laptop: wall draw while on AC. The USB-C
+# ucsi-source-psy current/voltage are the negotiated PD contract (20V/7.5A),
+# not a measurement, and BAT0 reads ~0 once full. So bat_w is real system
+# consumption only while discharging; apu_w is valid always.
+#
+# Query later with e.g.:
+#   sqlite3 ~/.local/share/metrics/metrics.db \
+#     "select datetime(ts,'unixepoch','localtime'), cpu_pct, mem_used_mb, apu_w
+#      from samples order by ts desc limit 20"
+
+import glob
+import os
+import sqlite3
+import time
+
+INTERVAL = 15
+DB = os.path.expanduser("~/.local/share/metrics/metrics.db")
+
+SCHEMA = """
+create table if not exists samples (
+  ts           integer primary key,  -- unix epoch seconds
+  load1        real,                 -- /proc/loadavg 1-min
+  cpu_pct      real,                 -- busy % over the interval, all cores
+  mem_used_mb  integer,              -- MemTotal - MemAvailable
+  swap_used_mb integer,              -- zram
+  apu_w        real,                 -- amdgpu PPT: APU package power
+  gpu_busy_pct integer,              -- amdgpu gpu_busy_percent
+  cpu_temp_c   real,                 -- k10temp Tctl
+  bat_w        real,                 -- battery flow, negative = discharging
+  bat_pct      integer,
+  on_ac        integer               -- 1/0
+)
+"""
+
+
+def read(path, conv=int):
+    try:
+        with open(path) as f:
+            return conv(f.read().strip())
+    except (OSError, ValueError):
+        return None
+
+
+def hwmon(name):
+    # hwmonN numbering is assigned at probe time and moves between boots.
+    for d in glob.glob("/sys/class/hwmon/hwmon*"):
+        if read(f"{d}/name", str) == name:
+            return d
+    return None
+
+
+def power_supply(kind):
+    for d in glob.glob("/sys/class/power_supply/*"):
+        if read(f"{d}/type", str) == kind:
+            yield d
+
+
+def cpu_times():
+    with open("/proc/stat") as f:
+        v = [int(x) for x in f.readline().split()[1:]]
+    idle = v[3] + v[4]  # idle + iowait
+    return sum(v[:8]) - idle, sum(v[:8])  # exclude guest (already in user)
+
+
+def meminfo():
+    m = {}
+    with open("/proc/meminfo") as f:
+        for line in f:
+            k, v = line.split(":", 1)
+            m[k] = int(v.split()[0])
+    return ((m["MemTotal"] - m["MemAvailable"]) // 1024,
+            (m["SwapTotal"] - m["SwapFree"]) // 1024)
+
+
+def battery():
+    for d in power_supply("Battery"):
+        pct = read(f"{d}/capacity")
+        w = read(f"{d}/power_now")
+        if w is None:
+            i, v = read(f"{d}/current_now"), read(f"{d}/voltage_now")
+            w = i * v / 1e6 if i is not None and v is not None else None
+        if w is not None:
+            w = w / 1e6
+            if read(f"{d}/status", str) == "Discharging":
+                w = -w
+        return w, pct
+    return None, None
+
+
+def on_ac():
+    online = [read(f"{d}/online") for d in power_supply("Mains")]
+    return int(any(online)) if online else None
+
+
+def main():
+    os.makedirs(os.path.dirname(DB), exist_ok=True)
+    db = sqlite3.connect(DB)
+    db.execute("pragma journal_mode=wal")
+    db.execute(SCHEMA)
+    db.commit()
+
+    gpu, k10 = hwmon("amdgpu"), hwmon("k10temp")
+    busy0, total0 = cpu_times()
+    # Align to wall-clock multiples so rows from different runs line up.
+    time.sleep(INTERVAL - time.time() % INTERVAL)
+    while True:
+        busy, total = cpu_times()
+        cpu = 100 * (busy - busy0) / (total - total0) if total > total0 else None
+        busy0, total0 = busy, total
+
+        mem, swap = meminfo()
+        apu = read(f"{gpu}/power1_average") if gpu else None
+        temp = read(f"{k10}/temp1_input") if k10 else None
+        bat_w, bat_pct = battery()
+
+        db.execute(
+            "insert or replace into samples values (?,?,?,?,?,?,?,?,?,?,?)",
+            (int(time.time()),
+             read("/proc/loadavg", lambda s: float(s.split()[0])),
+             round(cpu, 1) if cpu is not None else None,
+             mem, swap,
+             round(apu / 1e6, 2) if apu is not None else None,
+             read(f"{gpu}/device/gpu_busy_percent") if gpu else None,
+             temp / 1000 if temp is not None else None,
+             round(bat_w, 2) if bat_w is not None else None,
+             bat_pct, on_ac()))
+        # Commit every row: on this freeze-prone host the last minutes before
+        # a hang are the most interesting ones.
+        db.commit()
+        time.sleep(INTERVAL - time.time() % INTERVAL)
+
+
+if __name__ == "__main__":
+    main()
