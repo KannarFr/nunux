@@ -1,0 +1,15 @@
+[Unit]
+Description=Bluetooth connect/disconnect notifier (AirPods et al., via swaync)
+
+[Service]
+Type=simple
+# Same shape as disk-watch: no ordering on the notification daemon (swaync is
+# D-Bus activated) and nothing needed from sway's environment.
+ExecStart=%h/git/kannar/nunux/bin/bt-watch
+# Restart=always: the script only returns when `gdbus monitor` loses the system
+# bus or gets killed, and neither is a reason to stop announcing devices.
+Restart=always
+RestartSec=10
+
+# Not enabled on a target: graphical-session.target isn't activated on this box,
+# so sway starts the unit explicitly. No [Install] section by design.

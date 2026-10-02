@@ -35,6 +35,7 @@ Two repo regions: home dotfiles keep their bare names at the repo root, and ever
 | `config/systemd/user/restic-backup.{service,timer}` | `~/.config/systemd/user/restic-backup.{service,timer}` |
 | `config/systemd/user/tcc-snapshot.{service,path}` | `~/.config/systemd/user/tcc-snapshot.{service,path}` |
 | `config/systemd/user/{battery,disk}-watch.service` | `~/.config/systemd/user/{battery,disk}-watch.service` |
+| `config/systemd/user/bt-watch.service` | `~/.config/systemd/user/bt-watch.service` (notification on Bluetooth connect/disconnect; runs `bin/bt-watch`, started by sway) |
 | `config/systemd/user/yubikey-glow.service` | `~/.config/systemd/user/yubikey-glow.service` |
 | `config/systemd/user/metrics-log.service` | `~/.config/systemd/user/metrics-log.service` (15s CPU/RAM/power samples → `~/.local/share/metrics/metrics.db`, no retention) |
 | `claude/hooks/` | `~/.claude/hooks` (Claude Code notification hook scripts + sounds) |
@@ -52,7 +53,7 @@ Snapshots / not symlinked (read-only references; do not assume edits here propag
 | `paludis-config/*` | `/etc/paludis/*` — Paludis is the Exherbo package manager. Current host is Arch, so this dir is likely archival from a prior install. |
 | `kernelconfig` | `/usr/src/linux/.config` — kernel build snapshot |
 | `mtmux`, `doc/` | utility script + ad-hoc notes; live where they are |
-| `bin/*` | helper scripts (`battery-watch`, `powermenu`, `restic-backup`, `migrate-home`, `pkglist-refresh`, `screenrec`, `tcc-profile`, `charge-profile`, `tcc-snapshot`, `yubikey-glow`, `gpg-sign-glow`, `sway-watchdog`, `journal-check`, `snapshot-prune`, `disk-watch`, `metrics-log`) referenced by absolute path (sway's `set $bin`, systemd units, pacman hooks, waybar `on-click`, gitconfig's `gpg.program`) — not symlinked, not on `$PATH` |
+| `bin/*` | helper scripts (`battery-watch`, `powermenu`, `restic-backup`, `migrate-home`, `pkglist-refresh`, `screenrec`, `tcc-profile`, `charge-profile`, `tcc-snapshot`, `yubikey-glow`, `gpg-sign-glow`, `sway-watchdog`, `journal-check`, `snapshot-prune`, `disk-watch`, `bt-watch`, `metrics-log`) referenced by absolute path (sway's `set $bin`, systemd units, pacman hooks, waybar `on-click`, gitconfig's `gpg.program`) — not symlinked, not on `$PATH` |
 | `system-config/pkglist-pacman.txt`, `system-config/pkglist-aur.txt` | `pacman -Qqen` / `pacman -Qqem` — explicit packages (official / AUR), for rebuilding a machine |
 | `system-config/system/pacman.d/hooks/*` | `/etc/pacman.d/hooks/*` — pacman hooks: `pkglist-refresh.hook` (auto-refresh the package lists) and `tcc-snapshot.hook` (re-copy `/etc/tcc/*` into the repo via `bin/tcc-snapshot`). Both run PostTransaction as root and `su` to kannar; they only rewrite working-tree files — commit by hand. Snapshotting `/etc/tcc` on a *package* transaction is opportunistic: TCC config actually drifts from GUI edits, so this just sweeps it up next time you run pacman. For *real-time* capture there is also the `tcc-snapshot.path` user unit (inotify on `/etc/tcc/{settings,profiles}`) which runs the same `bin/tcc-snapshot` the instant either file changes — the pacman hook is the fallback for when the path unit isn't running. Both only rewrite the working tree; you still commit. |
 

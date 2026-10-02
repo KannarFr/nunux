@@ -40,6 +40,9 @@ exec swayidle -w \
 # back, and `systemctl --user status` plus the journal make a failure visible.
 # Started rather than enabled, for the same reason as yubikey-glow below.
 exec systemctl --user start battery-watch.service disk-watch.service
+# bt-watch: notification when a Bluetooth device (the AirPods) connects or
+# disconnects. Same unit shape, same reason to start it from here.
+exec systemctl --user start bt-watch.service
 # yubikey-glow: rainbow screen-edge glow while an OpenPGP/YubiKey touch is pending
 # (reads yubikey-touch-detector's socket; detector runs as a user service).
 # Run as a user unit so a crash self-recovers (Restart=on-failure); started here

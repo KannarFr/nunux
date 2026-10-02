@@ -1,0 +1,37 @@
+#!/bin/sh
+# Notify when a Bluetooth device (the AirPods, in practice) connects or
+# disconnects. Event-driven rather than polled: it follows BlueZ's
+# PropertiesChanged signals on the system bus and reacts to Device1.Connected.
+#
+# Not filtered on a MAC on purpose -- any paired device is announced under its
+# own alias and icon, so a second headset or a mouse needs no change here.
+
+# gdbus prints one signal per line, which is the whole reason it is used over
+# dbus-monitor's multi-line dumps:
+#   /org/bluez/hci0/dev_XX: org.freedesktop.DBus.Properties.PropertiesChanged ('org.bluez.Device1', {'Connected': <true>}, @as [])
+# stdbuf because stdout is a pipe here, and a block-buffered monitor would sit
+# on a connect event until enough later signals arrived to fill 4K.
+stdbuf -oL gdbus monitor --system --dest org.bluez |
+while read -r path _ rest; do
+	case "$rest" in
+	"('org.bluez.Device1', "*"'Connected': <true>"*)  what=connected ;;
+	"('org.bluez.Device1', "*"'Connected': <false>"*) what=disconnected ;;
+	*) continue ;;
+	esac
+	path=${path%:}
+
+	# busctl prints `s "AirPods"`. The properties outlive a disconnect (the
+	# device object stays while it is paired), so this works both ways.
+	prop() {
+		busctl --system get-property org.bluez "$path" org.bluez.Device1 "$1" \
+			2>/dev/null | sed 's/^s "//; s/"$//'
+	}
+	name=$(prop Alias)
+	icon=$(prop Icon)
+
+	# Synchronous hint keyed on the device: a headset that flaps replaces its
+	# own toast in place instead of stacking a connect/disconnect pile.
+	notify-send -i "${icon:-bluetooth}" \
+		-h "string:x-canonical-private-synchronous:bt-$path" \
+		"${name:-Bluetooth device} $what"
+done

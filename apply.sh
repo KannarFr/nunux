@@ -58,6 +58,7 @@ MAP=(
   "config/systemd/user/yubikey-glow.service   $HOME/.config/systemd/user/yubikey-glow.service"
   "config/systemd/user/battery-watch.service  $HOME/.config/systemd/user/battery-watch.service"
   "config/systemd/user/disk-watch.service     $HOME/.config/systemd/user/disk-watch.service"
+  "config/systemd/user/bt-watch.service       $HOME/.config/systemd/user/bt-watch.service"
   "config/systemd/user/metrics-log.service    $HOME/.config/systemd/user/metrics-log.service"
   "claude/statusline.sh    $HOME/.claude/statusline.sh"
   "claude/settings.json    $HOME/.claude/settings.json"
