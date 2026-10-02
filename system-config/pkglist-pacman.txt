@@ -93,6 +93,7 @@ nautilus
 net-tools
 nodejs
 noto-fonts
+noise-suppression-for-voice
 noto-fonts-emoji
 npm
 ollama
