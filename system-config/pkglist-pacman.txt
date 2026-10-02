@@ -170,6 +170,7 @@ usbutils
 valkey
 vault
 vim
+vlc
 vte3
 vulkan-intel
 vulkan-radeon
