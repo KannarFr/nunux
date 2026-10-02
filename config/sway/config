@@ -340,6 +340,8 @@ for_window [window_type="dialog"] floating enable
 for_window [title="Picture-in-Picture"] floating enable, sticky enable
 # waybar's sound tile opens pavucontrol: float it as a popup, not a tile
 for_window [app_id="org.pulseaudio.pavucontrol"] floating enable, resize set 720 520, move position 100 ppt 0 ppt, move left 730 px, move down 40 px
+# same for the wifi tile's iwgtk (iwd GUI)
+for_window [app_id="org.twosheds.iwgtk"] floating enable, resize set 480 600, move position 100 ppt 0 ppt, move left 490 px, move down 40 px
 
 include @sysconfdir@/sway/config.d/*
 

@@ -234,7 +234,9 @@
         "tooltip-format": "{ifname} via {gwaddr} ",
         "format-linked": "{ifname} (No IP) ",
         "format-disconnected": "Disconnected ⚠",
-        "format-alt": "{ifname}: {ipaddr}/{cidr}"
+        "format-alt": "{ifname}: {ipaddr}/{cidr}",
+        "format-alt-click": "click-right", // left click opens iwgtk
+        "on-click": "iwgtk"
     },
     "custom/vpn": {
         "exec": "$HOME/.config/waybar/vpn.sh",

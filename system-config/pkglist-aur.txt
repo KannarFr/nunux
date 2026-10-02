@@ -9,6 +9,7 @@ gitlab-inbox-bin
 google-chrome
 handy-bin
 hollywood
+iwgtk
 neofetch
 nitrogen
 piper-tts-bin
