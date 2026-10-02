@@ -91,9 +91,10 @@ mise
 mtr
 nautilus
 net-tools
+nftables
 nodejs
-noto-fonts
 noise-suppression-for-voice
+noto-fonts
 noto-fonts-emoji
 npm
 ollama

@@ -116,6 +116,10 @@ say "Enabling user services"
 enable_usr swaync.service vban-emitter.service vban-receptor.service \
            wireplumber.service pipewire.socket pipewire-pulse.socket gnome-keyring-daemon.socket \
            restic-backup.timer metrics-log.service
+# The firewall installed in step 8 drops inbound VBAN; nothing logs the drop.
+if systemctl --user cat vban-receptor.service >/dev/null 2>&1; then
+  warn "vban-receptor enabled, but udp 6980 is closed: uncomment its rule in system-config/system/nftables.conf"
+fi
 
 # 7. USBGuard: block unknown USB devices (BadUSB / fake keyboards) ----------
 # generate-policy allowlists whatever is plugged in NOW — on a desktop that
@@ -141,7 +145,19 @@ else
   fi
 fi
 
-# 8. default GDM session ----------------------------------------------------
+# 8. network hardening: firewall, key-only ssh, no LLMNR, docker on localhost
+# Reachable-from-the-LAN is the default for all four; see each file's header.
+# Must run before docker/sshd ever start with the stock configs on a new box.
+say "Network hardening (nftables, sshd, resolved, docker)"
+sys="$SC/system"
+sudo install -Dm644 "$sys/nftables.conf"                          /etc/nftables.conf
+sudo install -Dm644 "$sys/ssh/sshd_config.d/10-hardening.conf"    /etc/ssh/sshd_config.d/10-hardening.conf
+sudo install -Dm644 "$sys/systemd/resolved.conf.d/no-llmnr.conf" /etc/systemd/resolved.conf.d/no-llmnr.conf
+sudo install -Dm644 "$sys/docker/daemon.json"                     /etc/docker/daemon.json
+enable_sys nftables.service
+echo "  installed; takes effect on next boot (or restart nftables/sshd/systemd-resolved/docker)"
+
+# 9. default GDM session ----------------------------------------------------
 # gdm depends on gnome-shell, so a gnome.desktop session exists and GDM
 # defaults to it. Pin sway as this user's session in AccountsService so login
 # lands in sway instead of GNOME. (Host-local state under /var/lib; the gear
@@ -166,7 +182,7 @@ SystemAccount=false
 EOF
 fi
 
-# 9. Vim / Vundle -----------------------------------------------------------
+# 10. Vim / Vundle -----------------------------------------------------------
 say "Vim plugins (Vundle)"
 vundle="$HOME/.vim/bundle/Vundle.vim"
 [ -d "$vundle" ] || git clone https://github.com/VundleVim/Vundle.vim.git "$vundle"
@@ -178,14 +194,14 @@ coc="$HOME/.vim/bundle/coc.nvim"
 vim +PluginInstall +qall </dev/null >/dev/null 2>&1 && echo "  plugins installed" \
   || warn "run ':PluginInstall' inside vim by hand"
 
-# 10. tmux / tpm -------------------------------------------------------------
+# 11. tmux / tpm -------------------------------------------------------------
 say "tmux plugins (tpm)"
 tpm="$HOME/.tmux/plugins/tpm"
 [ -d "$tpm" ] || git clone https://github.com/tmux-plugins/tpm.git "$tpm"
 "$tpm/bin/install_plugins" >/dev/null 2>&1 && echo "  plugins installed" \
   || warn "open tmux and press 'prefix + I' to install plugins by hand"
 
-# 11. manual checklist ------------------------------------------------------
+# 12. manual checklist ------------------------------------------------------
 say "Done — remaining MANUAL steps (host-/secret-specific, not automated):"
 cat <<'EOF'
 
@@ -193,7 +209,7 @@ cat <<'EOF'
       fstab & crypttab for THIS disk (UUIDs/LUKS differ). Safe to copy as-is:
       hostname, hosts, locale.conf, vconsole.conf, nsswitch.conf,
       systemd/zram-generator.conf, dracut.conf.d/*, sysctl.d/*,
-      default/earlyoom, docker/daemon.json,
+      default/earlyoom,
       systemd/system/docker.slice, systemd/system/docker.service.d/*.
       Fix the username + repo path in pacman.d/hooks/pkglist-refresh.hook,
       then: sudo cp .../pkglist-refresh.hook /etc/pacman.d/hooks/
