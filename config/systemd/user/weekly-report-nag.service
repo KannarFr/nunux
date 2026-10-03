@@ -4,3 +4,7 @@ Description=weekly report reminder
 [Service]
 Type=exec
 ExecStart=%h/git/kannar/nunux/bin/weekly-report-nag
+# The button's foot+claude is spawned inside this unit's cgroup, and swaynag
+# (the main process) exits the moment it is clicked. The default control-group
+# kill would take the freshly opened terminal down with it.
+KillMode=process
