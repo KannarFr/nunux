@@ -115,7 +115,7 @@ fi
 say "Enabling user services"
 enable_usr swaync.service vban-emitter.service vban-receptor.service \
            wireplumber.service pipewire.socket pipewire-pulse.socket gnome-keyring-daemon.socket \
-           restic-backup.timer metrics-log.service
+           restic-backup.timer weekly-report-nag.timer metrics-log.service
 # The firewall installed in step 8 drops inbound VBAN; nothing logs the drop.
 if systemctl --user cat vban-receptor.service >/dev/null 2>&1; then
   warn "vban-receptor enabled, but udp 6980 is closed: uncomment its rule in system-config/system/nftables.conf"

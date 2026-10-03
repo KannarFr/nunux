@@ -1,0 +1,6 @@
+[Unit]
+Description=weekly report reminder
+
+[Service]
+Type=exec
+ExecStart=%h/git/kannar/nunux/bin/weekly-report-nag

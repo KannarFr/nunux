@@ -1,0 +1,10 @@
+[Unit]
+Description=Friday end-of-day weekly report reminder
+
+[Timer]
+OnCalendar=Fri 17:00
+# Lid shut at 17:00: fire at the next login instead of skipping the week.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

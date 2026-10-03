@@ -1,0 +1,24 @@
+#!/bin/sh
+# Friday end-of-day reminder to write the team weekly report. Fired by
+# weekly-report-nag.timer. Two layers on purpose: a critical swaync toast
+# (stays in the notification center until dismissed) and a big swaynag bar
+# across the top of the screen, whose button opens Claude on /weekly-report
+# in the axo repo -- a toast alone is too easy to miss at the end of a week.
+
+# The timer is Persistent=, so a Friday missed with the lid shut fires at the
+# next login -- possibly before sway is up. Wait for the compositor rather than
+# failing; WAYLAND_DISPLAY comes from sway's import-environment.
+export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-1}"
+while [ ! -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" ]; do sleep 30; done
+
+notify-send -u critical -a weekly-report -i x-office-document \
+	"📝 Weekly report" "C'est vendredi : lance /weekly-report"
+
+exec swaynag -t warning \
+	--font 'sans bold 26' \
+	--background d65d0e --text ffffff --border ffffff \
+	--button-background 1d2021 --button-text ffffff \
+	--button-padding 14 --border-bottom-size 4 --message-padding 20 \
+	-m '📝  VENDREDI — WEEKLY REPORT À FAIRE  📝' \
+	-Z '▶ Lancer /weekly-report' \
+	"foot -D \$HOME/git/cc/axo claude /weekly-report"
