@@ -33,6 +33,13 @@ profile docked {
 	output "AOC U27G3X 1322131231233" enable position 1828,0 scale 1.5
 }
 
+# Same AOC U27G3X model, but it reports a different EDID serial over
+# DisplayPort (0x909BC196) than the HDMI one above, so it needs its own profile.
+profile docked-dp {
+	output eDP-1 enable position 0,0 scale 1.4
+	output "AOC U27G3X 0x909BC196" enable position 1828,0 scale 1.5
+}
+
 profile laptop {
 	output eDP-1 enable position 0,0 scale 1.4
 }
