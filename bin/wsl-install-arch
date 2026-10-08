@@ -1,0 +1,266 @@
+#!/usr/bin/env bash
+#
+# wsl-install-arch — install Arch onto a spare disk from inside WSL2, no USB.
+#
+# For converting a Windows box to dual boot without touching the Windows disk:
+# Arch gets a whole second disk with its own ESP. Attach that disk raw from an
+# ADMIN PowerShell first (this takes it offline in Windows):
+#
+#     wsl --mount \\.\PHYSICALDRIVE<n> --bare
+#
+# then, in the WSL distro (Ubuntu), from a copy of this repo:
+#
+#     sudo bin/wsl-install-arch
+#
+# It produces a MINIMAL bootable system — kernel as a UKI, systemd-boot, wired
+# DHCP, sshd, the user, and a copy of this repo in ~/git/kannar/nunux. The
+# desktop itself is ./bootstrap.sh, run after the first real boot.
+#
+# Layout mirrors the laptop minus encryption: 2G ESP on /boot, btrfs with
+# @ / @home / @log / @pkg, compress=zstd:3. No LUKS on purpose — this host has
+# to come back up unattended after a power cut.
+#
+# Three things here are WSL-specific, and each one bites if "fixed":
+#   - The initramfs is built WITHOUT the autodetect hook. autodetect reads the
+#     running system's /sys, which here is the WSL VM (Hyper-V storage only),
+#     so it would drop ahci/nvme and the real machine could not find its root.
+#     Put autodetect back and run `mkinitcpio -P` after the first real boot.
+#   - bootctl runs with --no-variables: WSL has no efivars, so only the
+#     removable-media path (EFI/BOOT/BOOTX64.EFI) gets written and the firmware
+#     has no named entry yet. Boot the disk once from the firmware boot menu,
+#     then `sudo bootctl install` registers "Linux Boot Manager" and puts it
+#     first in BootOrder.
+#   - fstab is written by hand, not by genfstab, which would also record the
+#     WSL VM's swap disk.
+#
+# Environment overrides: HOST, DISK (e.g. /dev/sde), DISK_MODEL, USER_NAME,
+# AUTH_KEYS (authorized_keys to install for the user). For an unattended run:
+# CONFIRM=<hostname> skips the wipe prompt, PWHASH=<crypt hash> the password one.
+
+set -euo pipefail
+
+HOST=${HOST:-ocean}
+DISK_MODEL=${DISK_MODEL:-CT512MX100}
+USER_NAME=${USER_NAME:-kannar}
+AUTH_KEYS=${AUTH_KEYS:-/home/${SUDO_USER:-$USER_NAME}/.ssh/authorized_keys}
+REPO=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
+WORK=/var/tmp/arch-bootstrap
+ROOTFS=$WORK/root.x86_64
+TARGET=$ROOTFS/mnt
+MIRROR='https://geo.mirror.pkgbuild.com'
+APT_MIRROR=${APT_MIRROR:-http://fr.archive.ubuntu.com/ubuntu}
+
+say()  { printf '\n\033[1;34m==>\033[0m %s\n' "$*"; }
+die()  { printf '\033[1;31merror:\033[0m %s\n' "$*" >&2; exit 1; }
+
+[ "$(id -u)" -eq 0 ] || die "run as root (sudo $0)"
+grep -qi microsoft /proc/version || die "this is meant to run inside WSL2"
+[ -s "$AUTH_KEYS" ] || die "no authorized_keys at $AUTH_KEYS (set AUTH_KEYS=)"
+
+# 1. pick the disk ------------------------------------------------------------
+# WSL's own VHDs show up as "Virtual Disk"; never offer those.
+if [ -z "${DISK:-}" ]; then
+  mapfile -t found < <(lsblk -dno NAME,MODEL | awk -v m="$DISK_MODEL" 'index($0, m) {print $1}')
+  [ "${#found[@]}" -eq 1 ] || {
+    lsblk -do NAME,SIZE,MODEL
+    die "expected exactly one disk matching '$DISK_MODEL' — attach it with 'wsl --mount ... --bare' or pass DISK=/dev/sdX"
+  }
+  DISK=/dev/${found[0]}
+fi
+[ -b "$DISK" ] || die "$DISK is not a block device"
+lsblk -dno MODEL "$DISK" | grep -qi virtual && die "$DISK is a WSL virtual disk"
+lsblk -no MOUNTPOINT "$DISK" | grep -q . && die "$DISK has mounted partitions"
+
+say "About to ERASE $DISK and install Arch as '$HOST':"
+lsblk -o NAME,SIZE,TYPE,FSTYPE,LABEL,MODEL "$DISK"
+if [ "${CONFIRM:-}" != "$HOST" ]; then
+  read -rp "Type the hostname ($HOST) to confirm: " answer </dev/tty
+  [ "$answer" = "$HOST" ] || die "aborted"
+fi
+
+if [ -n "${PWHASH:-}" ]; then
+  pwhash=$PWHASH
+else
+  while :; do
+    read -rsp "Password for $USER_NAME on $HOST: " pw </dev/tty; echo
+    read -rsp "Again: " pw2 </dev/tty; echo
+    [ -n "$pw" ] && [ "$pw" = "$pw2" ] && break
+    echo "empty or mismatched, try again"
+  done
+  pwhash=$(printf '%s' "$pw" | openssl passwd -6 -stdin)
+  unset pw pw2
+fi
+
+cleanup() { mountpoint -q "$ROOTFS" && umount -R "$ROOTFS" || true; }
+trap cleanup EXIT
+
+# 2. tools + Arch bootstrap environment ----------------------------------------
+# A throwaway source list instead of the distro's own: archive.ubuntu.com
+# black-holes from some networks and `apt-get update` then hangs for good.
+say "Installing host tools"
+. /etc/os-release
+apt_src=$(mktemp)
+printf 'deb %s %s main universe\n' "$APT_MIRROR" "$VERSION_CODENAME" "$APT_MIRROR" "$VERSION_CODENAME-updates" > "$apt_src"
+apt_opts=(-o Dir::Etc::sourcelist="$apt_src" -o Dir::Etc::sourceparts=/dev/null -o Acquire::http::Timeout=20)
+apt-get "${apt_opts[@]}" update -qq
+DEBIAN_FRONTEND=noninteractive apt-get "${apt_opts[@]}" install -y -qq btrfs-progs dosfstools gdisk zstd curl openssl
+rm -f "$apt_src"
+
+say "Fetching the Arch bootstrap tarball"
+cleanup
+mountpoint -q "$ROOTFS" && die "$ROOTFS is still mounted from an earlier run; unmount it first"
+rm -rf "$WORK"; mkdir -p "$WORK"
+curl -fL --progress-bar -o "$WORK/bootstrap.tar.zst" "$MIRROR/iso/latest/archlinux-bootstrap-x86_64.tar.zst"
+tar --zstd -xpf "$WORK/bootstrap.tar.zst" -C "$WORK" --numeric-owner
+rm "$WORK/bootstrap.tar.zst"
+# pacman refuses to work unless its root is a mount point
+mount --bind "$ROOTFS" "$ROOTFS"
+echo "Server = $MIRROR/\$repo/os/\$arch" > "$ROOTFS/etc/pacman.d/mirrorlist"
+
+# 3. partition + filesystems ---------------------------------------------------
+say "Partitioning $DISK"
+wipefs -af "$DISK" >/dev/null
+sgdisk --zap-all "$DISK" >/dev/null
+sgdisk -n1:0:+2G -t1:ef00 -c1:ESP -n2:0:0 -t2:8304 -c2:"$HOST" "$DISK"
+partprobe "$DISK"; udevadm settle
+esp=${DISK}1 root=${DISK}2
+mkfs.vfat -F32 -n ESP "$esp" >/dev/null
+mkfs.btrfs -q -f -L "$HOST" "$root"
+
+mount "$root" "$TARGET"
+for sv in @ @home @log @pkg; do btrfs subvolume create "$TARGET/$sv" >/dev/null; done
+umount "$TARGET"
+
+btrfs_opts=rw,relatime,compress=zstd:3
+vfat_opts=rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=mixed,utf8,errors=remount-ro
+mount -o "$btrfs_opts,subvol=@" "$root" "$TARGET"
+mkdir -p "$TARGET"/{boot,home,var/log,var/cache/pacman/pkg}
+mount -o "$btrfs_opts,subvol=@home" "$root" "$TARGET/home"
+mount -o "$btrfs_opts,subvol=@log"  "$root" "$TARGET/var/log"
+mount -o "$btrfs_opts,subvol=@pkg"  "$root" "$TARGET/var/cache/pacman/pkg"
+mount -o fmask=0077,dmask=0077 "$esp" "$TARGET/boot"
+
+# journald mmap-writes; on CoW btrfs that corrupts journals (see CLAUDE.md).
+# NOCOW is only inherited at creation and +C fails while the compress flag is
+# set, so clear that first — before journald ever creates a file here.
+mkdir -p "$TARGET/var/log/journal"
+chattr -c "$TARGET/var/log/journal" 2>/dev/null || true
+chattr +C "$TARGET/var/log/journal" || echo "warning: could not set NOCOW on /var/log/journal"
+
+root_uuid=$(blkid -s UUID -o value "$root")
+esp_uuid=$(blkid -s UUID -o value "$esp")
+
+# 4. base system -----------------------------------------------------------------
+say "Installing the base system (pacstrap)"
+"$ROOTFS/usr/bin/arch-chroot" "$ROOTFS" /bin/bash -euo pipefail -c '
+  pacman-key --init >/dev/null 2>&1
+  pacman-key --populate archlinux >/dev/null 2>&1
+  pacstrap -K /mnt base base-devel linux linux-firmware amd-ucode mkinitcpio \
+    btrfs-progs dosfstools efibootmgr edk2-shell sudo openssh git vim zsh \
+    nvidia-open nvidia-utils
+'
+
+cat > "$TARGET/etc/fstab" <<EOF
+UUID=$root_uuid  /                      btrfs  $btrfs_opts,subvol=/@      0 0
+UUID=$root_uuid  /home                  btrfs  $btrfs_opts,subvol=/@home  0 0
+UUID=$root_uuid  /var/log               btrfs  $btrfs_opts,subvol=/@log   0 0
+UUID=$root_uuid  /var/cache/pacman/pkg  btrfs  $btrfs_opts,subvol=/@pkg   0 0
+UUID=$esp_uuid   /boot                  vfat   $vfat_opts  0 2
+EOF
+
+# 5. configure the target ------------------------------------------------------
+say "Configuring $HOST"
+install -m600 /dev/null "$TARGET/root/stage2.env"
+cat > "$TARGET/root/stage2.env" <<EOF
+HOST='$HOST'
+USER_NAME='$USER_NAME'
+PWHASH='$pwhash'
+ROOT_UUID='$root_uuid'
+EOF
+
+cat > "$TARGET/root/stage2.sh" <<'STAGE2'
+set -euo pipefail
+. /root/stage2.env
+
+ln -sf /usr/share/zoneinfo/Europe/Paris /etc/localtime
+printf '%s\n' 'en_IE.UTF-8 UTF-8' 'en_US.UTF-8 UTF-8' 'fr_FR.UTF-8 UTF-8' > /etc/locale.gen
+locale-gen >/dev/null
+echo 'LANG=en_IE.UTF-8' > /etc/locale.conf
+printf '%s\n' 'FONT=default8x16' 'KEYMAP=fr' 'XKBLAYOUT=fr' 'XKBMODEL=pc105' \
+  'XKBOPTIONS=terminate:ctrl_alt_bksp' > /etc/vconsole.conf
+echo "$HOST" > /etc/hostname
+printf '%s\n' '127.0.0.1 localhost' '::1 localhost' "127.0.1.1 $HOST" > /etc/hosts
+
+useradd -m -u 1000 -G wheel -s /bin/zsh "$USER_NAME"
+usermod -p "$PWHASH" "$USER_NAME"
+echo '%wheel ALL=(ALL:ALL) ALL' > /etc/sudoers.d/10-wheel
+# Lets bootstrap.sh run unattended over ssh. REMOVE once the box is set up.
+echo "$USER_NAME ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/99-install-nopasswd
+chmod 440 /etc/sudoers.d/10-wheel /etc/sudoers.d/99-install-nopasswd
+
+printf '%s\n' '[Match]' 'Name=en*' '' '[Network]' 'DHCP=yes' > /etc/systemd/network/20-wired.network
+systemctl -q enable systemd-networkd systemd-resolved systemd-timesyncd sshd
+
+# No autodetect (see header), and no kms hook: it would pull nouveau into the
+# initramfs next to the nvidia driver.
+sed -i 's/^HOOKS=.*/HOOKS=(base udev microcode modconf keyboard keymap consolefont block filesystems fsck)/' /etc/mkinitcpio.conf
+echo "root=UUID=$ROOT_UUID rootflags=subvol=@ rw rootfstype=btrfs zswap.enabled=0 efi_pstore.pstore_disable=0" > /etc/kernel/cmdline
+cat > /etc/mkinitcpio.d/linux.preset <<'EOF'
+# mkinitcpio preset file for the 'linux' package
+
+ALL_kver="/boot/vmlinuz-linux"
+
+PRESETS=('default')
+
+default_uki="/boot/EFI/Linux/arch-linux.efi"
+default_options="--splash /usr/share/systemd/bootctl/splash-arch.bmp"
+EOF
+mkdir -p /boot/EFI/Linux
+rm -f /boot/initramfs-linux*.img
+mkinitcpio -P
+
+bootctl --esp-path=/boot --no-variables install || {
+  # bootctl can balk inside a nested chroot; the loader is just two copies.
+  mkdir -p /boot/EFI/BOOT /boot/EFI/systemd /boot/loader/entries
+  cp /usr/lib/systemd/boot/efi/systemd-bootx64.efi /boot/EFI/BOOT/BOOTX64.EFI
+  cp /usr/lib/systemd/boot/efi/systemd-bootx64.efi /boot/EFI/systemd/systemd-bootx64.efi
+}
+printf '%s\n' 'timeout 3' > /boot/loader/loader.conf
+# UEFI shell: the way to chainload Windows' loader from its own ESP on the
+# other disk, since systemd-boot only auto-detects Windows on the SAME ESP.
+cp /usr/share/edk2-shell/x64/Shell.efi /boot/shellx64.efi
+STAGE2
+
+"$ROOTFS/usr/bin/arch-chroot" "$ROOTFS" arch-chroot /mnt /bin/bash /root/stage2.sh
+rm -f "$TARGET/root/stage2.sh" "$TARGET/root/stage2.env"
+
+# 6. things that need the host side -------------------------------------------
+ln -sf ../run/systemd/resolve/stub-resolv.conf "$TARGET/etc/resolv.conf"
+
+home=$TARGET/home/$USER_NAME
+install -d -m700 "$home/.ssh"
+install -m600 "$AUTH_KEYS" "$home/.ssh/authorized_keys"
+mkdir -p "$home/git/kannar"
+cp -a "$REPO" "$home/git/kannar/nunux"
+chown -R 1000:1000 "$home"
+
+ls -lh "$TARGET/boot/EFI/Linux/" "$TARGET/boot/EFI/BOOT/"
+sync
+cleanup
+trap - EXIT
+
+say "Done. Next:"
+cat <<EOF
+
+  1. Admin PowerShell:  wsl --unmount   (releases the disk)
+  2. Reboot, open the firmware boot menu (F11 on MSI boards) and pick the
+     "UEFI OS" entry on this disk.
+  3. From another machine:  ssh $USER_NAME@<ip>   (wired DHCP, key-only keys
+     copied from $AUTH_KEYS)
+  4. On $HOST:
+       sudo bootctl install                 # named entry, first in BootOrder
+       add 'autodetect' back after 'microcode' in /etc/mkinitcpio.conf HOOKS,
+         then: sudo mkinitcpio -P
+       cd ~/git/kannar/nunux && ./bootstrap.sh
+       sudo rm /etc/sudoers.d/99-install-nopasswd
+EOF
