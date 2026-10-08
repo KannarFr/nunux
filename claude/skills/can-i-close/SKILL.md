@@ -43,8 +43,9 @@ done
 ```bash
 git status --short                       # uncommitted work: whose is it?
 git fetch -q origin
-git rev-parse --short main origin/main   # ahead / behind
-git log --oneline origin/main..main      # what is local only
+b=$(git symbolic-ref --short refs/remotes/origin/HEAD | sed 's|^origin/||')   # main here, master elsewhere
+git rev-list --left-right --count "origin/$b...$b"   # behind, ahead (rev-parse --short takes one rev)
+git log --oneline "origin/$b..$b"        # what is local only
 git tag --points-at HEAD
 git worktree list                        # release / verification worktrees left behind
 git stash list
