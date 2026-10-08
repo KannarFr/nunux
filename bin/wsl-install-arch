@@ -103,7 +103,7 @@ apt_src=$(mktemp)
 printf 'deb %s %s main universe\n' "$APT_MIRROR" "$VERSION_CODENAME" "$APT_MIRROR" "$VERSION_CODENAME-updates" > "$apt_src"
 apt_opts=(-o Dir::Etc::sourcelist="$apt_src" -o Dir::Etc::sourceparts=/dev/null -o Acquire::http::Timeout=20)
 apt-get "${apt_opts[@]}" update -qq
-DEBIAN_FRONTEND=noninteractive apt-get "${apt_opts[@]}" install -y -qq btrfs-progs dosfstools gdisk zstd curl openssl
+DEBIAN_FRONTEND=noninteractive apt-get "${apt_opts[@]}" install -y -qq btrfs-progs dosfstools gdisk parted zstd curl openssl
 rm -f "$apt_src"
 
 say "Fetching the Arch bootstrap tarball"
@@ -198,6 +198,10 @@ echo '%wheel ALL=(ALL:ALL) ALL' > /etc/sudoers.d/10-wheel
 echo "$USER_NAME ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/99-install-nopasswd
 chmod 440 /etc/sudoers.d/10-wheel /etc/sudoers.d/99-install-nopasswd
 
+# Key-only from the very first boot: this user has passwordless sudo until
+# bootstrap.sh is done, and bootstrap installs this same file only later.
+printf '%s\n' 'PasswordAuthentication no' 'KbdInteractiveAuthentication no' 'PermitRootLogin no' \
+  > /etc/ssh/sshd_config.d/10-hardening.conf
 printf '%s\n' '[Match]' 'Name=en*' '' '[Network]' 'DHCP=yes' > /etc/systemd/network/20-wired.network
 systemctl -q enable systemd-networkd systemd-resolved systemd-timesyncd sshd
 
@@ -246,8 +250,9 @@ chown -R 1000:1000 "$home"
 
 ls -lh "$TARGET/boot/EFI/Linux/" "$TARGET/boot/EFI/BOOT/"
 sync
-cleanup
 trap - EXIT
+# not cleanup(): that one is best-effort, and a disk left mounted must not read as "Done"
+umount -R "$ROOTFS" || die "could not unmount $ROOTFS — the install is complete, but find what holds it before 'wsl --unmount'"
 
 say "Done. Next:"
 cat <<EOF
