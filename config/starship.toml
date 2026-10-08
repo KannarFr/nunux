@@ -1,6 +1,7 @@
 "$schema" = 'https://starship.rs/config-schema.json'
 
 format = """
+${env_var.PROMPT_HOST}\
 $os\
 $directory\
 $git_branch\
@@ -63,6 +64,11 @@ SUSE = ''
 Ubuntu = ''
 Unknown = ''
 Windows = ''
+
+# Set by zshrc on every host except the laptop.
+[env_var.PROMPT_HOST]
+format = '[$env_value]($style) '
+style = 'bold red'
 
 [directory]
 #   📂     |

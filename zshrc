@@ -218,6 +218,9 @@ export NVM_DIR="$HOME/.nvm"
 export NPM_CONFIG_PREFIX="$HOME/.npm-global"
 export PATH=${PATH}:${HOME}/.pulsarctl/plugins
 
+# Red hostname prefix in the prompt (starship's env_var.PROMPT_HOST) on every
+# host but the laptop, so a shell on another box is unmistakable.
+[[ $HOST == lagoon ]] || export PROMPT_HOST=$HOST
 eval "$(starship init zsh)"
 eval "$(direnv hook zsh)"
 
