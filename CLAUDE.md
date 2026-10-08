@@ -45,6 +45,7 @@ Two repo regions: home dotfiles keep their bare names at the repo root, and ever
 | `claude/commands/` | `~/.claude/commands` (user-defined slash commands) |
 | `claude/agents/` | `~/.claude/agents` (user-defined subagents) |
 | `claude/skills/gitlab-mail/` | `~/.claude/skills/gitlab-mail` (Thunderbird GitLab-mail triage skill + IMAP scripts) |
+| `claude/skills/can-i-close/` | `~/.claude/skills/can-i-close` (end-of-session check: answers "can I close this session?" from evidence — pending agents, leftover processes and worktrees, git vs remote, what production serves) |
 
 Snapshots / not symlinked (read-only references; do not assume edits here propagate):
 
