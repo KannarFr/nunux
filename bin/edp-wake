@@ -1,0 +1,35 @@
+#!/bin/sh
+# swayidle's `resume` command: power every output back on, then, when docked,
+# cycle the laptop panel off/on.
+#
+# Workaround, not a fix. Twice on 2026-10-09 eDP-1 stayed black after the idle
+# blank while sway, the kernel and the backlight all reported it on, and a
+# manual off/on relit it both times (see CLAUDE.md, doc/edp-dark-2026-10-09.md).
+#
+# No `set -e` and no `&&` on purpose: swaymsg can exit non-zero after sway has
+# already applied the command (3s IPC timeout during a modeset), and a chain
+# that stops after the power-off would leave the panel dark, which is the very
+# thing this exists to prevent. The final power-on always runs.
+
+swaymsg 'output * power on'
+
+# Only seen with an external attached. Undocked, eDP-1 is the only screen and a
+# 2s blackout under the swaylock prompt would be pure cost.
+swaymsg -t get_outputs -r | jq -e '
+	([.[] | select(.active)] | length) > 1
+	and any(.[]; .name == "eDP-1" and .active)' >/dev/null || exit 0
+
+# Backgrounded so swayidle (-w) is not held for the duration. The 3s settle is
+# there because the manual cycle that worked was done on a panel that had been
+# "on" for a long while; cycling straight into the wake modeset is not the same
+# test, and may just repeat the failed transition.
+(
+	sleep 3
+	swaymsg 'output eDP-1 power off'
+	sleep 2
+	swaymsg 'output eDP-1 power on'
+
+	# The cycle hides whether the panel would have come back by itself, so
+	# at least leave a trace of how often it runs.
+	logger -t edp-wake 'cycled eDP-1 after idle wake'
+) >/dev/null 2>&1 &

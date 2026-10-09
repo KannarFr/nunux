@@ -29,9 +29,13 @@ exec wl-paste --watch cliphist store
 # Wayland toplevel that GTK/webkit overlay window silently fails to appear
 # (regressed after a webkit2gtk/GTK update ~Jul 2026); under XWayland it floats fine.
 exec GDK_BACKEND=x11 handy
+# The resume goes through bin/edp-wake rather than a bare `output * power on`:
+# when docked it also cycles eDP-1 off/on, because twice on 2026-10-09 the
+# panel stayed black after the idle blank while sway, the kernel and the
+# backlight all reported it on (see CLAUDE.md).
 exec swayidle -w \
           timeout 3600 'swaylock -f -c 000000' \
-          timeout 3900 'swaymsg "output * power off"' resume 'swaymsg "output * power on"' \
+          timeout 3900 'swaymsg "output * power off"' resume $bin/edp-wake \
           before-sleep 'swaylock -f -c 000000'
 # battery-watch and disk-watch are user units, not bare `exec` loops: both are
 # infinite loops whose death is otherwise silent, and earlyoom on this host
