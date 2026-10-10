@@ -1,8 +1,8 @@
 # ws1: remote compute for this laptop
 
-`ws1` is a Clever Cloud workstation VM (32 cores, 62G RAM, 470G on `/data`), reachable as `ssh ws1`. This laptop is the weak machine: it has frozen under load before. So the session on the laptop stays the advisor (talking to the user, planning, reading, small edits, reviewing results) and heavy work goes to ws1.
+`ws1` is a Clever Cloud workstation VM (32 cores, 62G RAM, ~460G encrypted home), reachable as `ssh ws1` (root) or `ssh kannar@ws1`. This laptop is the weak machine: it has frozen under load before. So the session on the laptop stays the advisor (talking to the user, planning, reading, small edits, reviewing results) and heavy work goes to ws1.
 
-The helper is `/home/kannar/git/kannar/nunux/bin/ws1` (not on `$PATH`, call it by absolute path). Run it with no argument for the full usage.
+The helper is `/home/kannar/git/kannar/nunux/bin/ws1` (not on `$PATH`, call it by absolute path). Run it with no argument for the full usage. Everything it starts runs as the unprivileged user `kannar`.
 
 ## Rule
 
@@ -15,39 +15,35 @@ Cheap work stays local without checking: searches, reading files, short commands
 
 ## Agents on ws1
 
-`ws1 run` spawns a headless Claude session in a container, through claude-hive.
+`ws1 run` copies the current git tree to the same path under `/home/kannar` on ws1 and starts a headless `claude -p` there, in the same subdirectory, inside a tmux session, on the user's own Claude login.
 
 ```sh
-ws1 run --repo clever-cloud/axo --name "kv watch fix" --wait - <<'EOF'
+ws1 run --wait - <<'EOF'
 <the brief>
 EOF
 ```
 
-- Launch it as a **background** Bash command with `--wait`: it returns when the brief ends and prints the session's final answer, and several can run in parallel. Without `--wait` it prints the session name at once; `ws1 wait <session>` or `ws1 result <session>` reads the answer later.
-- **The session sees only what is on GitLab.** It clones `--repo` fresh on its own branch `claude/<session id>` (or `--branch`), and can push and open merge requests as the user. It has none of this conversation and none of the laptop's uncommitted changes, so the brief must stand alone: goal, what done looks like, what is already known, constraints, and what to send back. Push the branch it should start from first, or use `sync` + `exec` below.
-- `--repo` must be on the host's allow list (`ssh ws1 grep -A3 '^\[repos\]' .config/claude-hive/config.toml`). Without `--repo` the session is blank: no clone, no GitLab token, fine for pure research or computation.
-- For code work, ask the session to push its branch and reply with the branch name and a summary. Then `git fetch` and review it here. Its answer is a report, not a verified fact.
-- **Kill the session once its result is collected**: `ws1 kill <session>`. A finished session otherwise stays up as an idle interactive Claude. `ws1 ls` marks the ones spawned from this laptop with `*`; never kill the others, the user started them by hand.
-- Sessions run on a Claude subscription lent by a colleague through the team registry. Keep at most 4 running at once unless the user asks for more, and do not use them for trivia.
+- Launch it as a **background** Bash command with `--wait`: it returns when the agent ends and prints its final answer, and several can run in parallel. Without `--wait` it prints the run id at once; `ws1 wait <id>` or `ws1 result <id>` reads the answer later; `ws1 ls` lists runs.
+- The agent sees the working tree, uncommitted changes included, but none of this conversation: the brief must stand alone (goal, what done looks like, what is known, constraints, what to send back).
+- It runs with `--permission-mode bypassPermissions`. Tell it not to push, and not to touch anything outside its directory.
+- **Its edits stay on ws1 until collected**: review `ws1 diff`, then apply with `ws1 diff | git apply` from the same repo. Collect before the next `sync` or `run` of that repo, which overwrites the remote copies of the files it sends. Parallel agents on the same repo share one remote tree, so give them disjoint files or run them one after another.
+- Its answer is a report, not a verified fact: check the diff here.
+- Keep at most 4 agents running at once unless the user asks for more.
 
 ## Builds and tests on ws1
 
-For uncommitted work, or a repo that is not on the Clever GitLab:
-
 ```sh
 ws1 sync                        # copy the git tree to the same path under /home/kannar
-ws1 exec 'cargo test -p foo'    # run there as kannar, in the same subdirectory
+ws1 exec 'cargo test -p foo'    # run there, in the same subdirectory
 ```
 
-`sync` sends tracked and untracked-but-not-ignored files only, so the remote `target/` survives as a build cache and gitignored or skip-worktree files stay local; files deleted here are deleted there on the next sync. The host has cargo, node, gcc and python; it has no java, sbt or docker. Results stay on ws1: copy back only what is needed (`scp kannar@ws1:...`).
+Only git repos can be synced. `sync` sends tracked and untracked-but-not-ignored files only, so the remote `target/` survives as a build cache and gitignored or skip-worktree files stay local; files deleted here are deleted there on the next sync. The host has cargo, node, gcc and python; it has no java, sbt or docker.
 
 ## The encrypted home
 
-`/home/kannar` on ws1 is a LUKS volume whose only key is `~/.local/share/ws1-home.key` on this laptop. After a reboot of the VM it is locked: `ws1 load` then reports `home LOCKED`, and `sync`/`exec` fail because kannar cannot log in. `ws1 unlock` reopens it; do that without asking. Never run `ws1 lock` unprompted, and never print, copy or move the key file: it is the only copy, and without it the home is unrecoverable.
-
-Hive sessions do not live in that home. Their clones sit in podman storage under `/data/podman`, which is not encrypted.
+`/home/kannar` on ws1 is a LUKS volume whose only key is `~/.local/share/ws1-home.key` on this laptop. After a reboot of the VM it is locked: `ws1 load` then reports `home LOCKED`, and everything else fails because kannar cannot log in. `ws1 unlock` reopens it; do that without asking. Never run `ws1 lock` unprompted, and never print, copy or move the key file: it is the only copy, and without it the home is unrecoverable.
 
 ## Limits
 
-- The `ws1` alias logs in as root, on a VM that also holds the user's GitLab bootstrap token. Do not install packages, change its configuration or touch `/data/claude-hive*` unless asked.
+- The `ws1` alias logs in as root, on a VM that also runs claude-hive with the user's GitLab bootstrap token. Do not install packages, change its configuration or touch `/data/claude-hive*` unless asked; work as kannar.
 - Never copy secrets (`secrets.env`, `*.env`, tokens) to it.

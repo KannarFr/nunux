@@ -2,15 +2,17 @@
 # ws1: offload compute to the Clever Cloud workstation VM (ssh alias `ws1`,
 # defined in the untracked ~/.ssh/config.local because this repo is public).
 #
-# Two ways to use it, both driven by the Claude sessions on this laptop (see
-# claude/WS1.md):
+# Everything runs as user kannar, driven by the Claude sessions on this laptop
+# (see claude/WS1.md):
 #
-#   agents   `run` spawns a headless Claude session in a container there, through
-#            claude-hive. It clones the repo from GitLab on its own branch, so it
-#            sees only what is pushed, and it runs on a team-lent subscription.
-#   builds   `sync` + `exec` copy the working tree and run a command on the host
-#            itself, as user kannar: uncommitted work, repos that are not on the
-#            Clever GitLab.
+#   agents   `run` copies the current git tree over and starts a headless
+#            `claude -p` in it, inside a tmux session, on kannar's own Claude
+#            login. Its edits come back with `ws1 diff | git apply`.
+#   builds   `sync` + `exec` copy the tree and run a command in it.
+#
+# Each sync commits the copied tree to a git repo of its own on ws1 and tags it
+# ws1-sync, so `diff` shows exactly what happened there since. A sync overwrites
+# remote edits to the files it sends: collect a run's diff before the next sync.
 #
 # kannar's home there is a LUKS volume (/data/kannar-home.luks) whose only key is
 # $KEY on this laptop. Nothing on the VM can open it, so after a reboot it stays
@@ -18,28 +20,26 @@
 # inside it. Lose $KEY and the home is gone.
 #
 #   ws1 load                      one status line; exit 0 free, 1 busy, 2 unreachable
-#   ws1 run [opts] <brief | ->    spawn a session, print its name
-#       --repo g/p  --extra g/p  --branch b  --name n     passed to claude-hive
-#       --wait      block until the brief ends and print its answer
-#       --force     spawn even when ws1 is busy
-#   ws1 wait <session> [secs]     block until the brief ends (default 3600), print its answer
-#   ws1 result <session>          print the answer of a finished brief
-#   ws1 ls                        hive sessions; `*` marks the ones spawned from here
-#   ws1 kill <session>            remove a session, its GitLab token and its Claude secret
+#   ws1 run [opts] <brief | ->    sync, start an agent in the same subdirectory, print its id
+#       --wait      block until it ends and print its answer
+#       --force     start even when ws1 is busy
+#       --no-sync   run on what is already there
+#   ws1 wait <id> [secs]          block until it ends (default 3600), print its answer
+#   ws1 result <id>               print the answer of a finished run
+#   ws1 ls                        runs: id, state, directory
+#   ws1 kill <id>                 stop a run
+#   ws1 diff                      what changed on ws1 since the last sync, as a patch
 #   ws1 sync                      copy the current git tree to the same path under kannar's home
-#   ws1 exec <command>            run a command there as kannar, in the same subdirectory
+#   ws1 exec <command>            run a command there, in the same subdirectory
 #   ws1 unlock | lock             open and mount, or unmount and close, kannar's home
-#   ws1 sh [command]              plain ssh
-#
-# `kill` only takes sessions recorded in $STATE unless --force: other sessions on
-# the host were started by hand and may hold unpushed work.
+#   ws1 sh [command]              ssh as kannar
 set -euo pipefail
 
 HOST=ws1
-HIVE=/data/claude-hive/target/release/claude-hive
-STATE="${XDG_STATE_HOME:-$HOME/.local/state}/ws1/spawned"
 KEY="${XDG_DATA_HOME:-$HOME/.local/share}/ws1-home.key"
 RHOME=/home/kannar
+RUNS=.ws1/runs                      # under kannar's home
+CLAUDE=$RHOME/.local/bin/claude
 # Busy = the host would slow the work down more than this laptop would.
 MAX_LOAD_PER_CORE=0.75
 MIN_MEM_AVAIL_PCT=20
@@ -58,60 +58,53 @@ u() {
 	return $rc
 }
 
-# Accepts a container name or a bare session id.
-container() {
-	local c="${1:-}"
-	[[ -n "$c" ]] || die "missing session"
-	[[ "$c" == claude-hive-* ]] || c="claude-hive-$c"
-	[[ "$c" =~ ^claude-hive-[0-9]+-[0-9a-f]+$ ]] || die "not a session: $1"
-	printf '%s\n' "$c"
+run_id() {
+	[[ "${1:-}" =~ ^[0-9]+-[0-9]+$ ]] || die "not a run id: ${1:-}"
+	printf '%s\n' "$1"
 }
 
 load() {
-	local out l1 n mem sessions home
-	out=$(r 'read -r l1 _ </proc/loadavg; echo "$l1 $(nproc) $(awk "/^MemTotal/{t=\$2} /^MemAvailable/{a=\$2} END{printf \"%d\", a*100/t}" /proc/meminfo) $(podman ps -q --filter label=claude-hive | wc -l) $(mountpoint -q /home/kannar && echo unlocked || echo LOCKED)"') \
+	local out l1 n mem agents home
+	out=$(r 'read -r l1 _ </proc/loadavg; echo "$l1 $(nproc) $(awk "/^MemTotal/{t=\$2} /^MemAvailable/{a=\$2} END{printf \"%d\", a*100/t}" /proc/meminfo) $(pgrep -u kannar -xc claude) $(mountpoint -q /home/kannar && echo unlocked || echo LOCKED)"') \
 		|| { echo "ws1 unreachable"; return 2; }
-	read -r l1 n mem sessions home <<<"$out"
+	read -r l1 n mem agents home <<<"$out"
 	if awk -v l="$l1" -v n="$n" -v m="$mem" -v L="$MAX_LOAD_PER_CORE" -v M="$MIN_MEM_AVAIL_PCT" \
 		'BEGIN{exit !(l/n >= L || m < M)}'; then
-		echo "ws1 busy: load $l1/$n cores, mem ${mem}% available, $sessions sessions, home $home"
+		echo "ws1 busy: load $l1/$n cores, mem ${mem}% available, $agents agents, home $home"
 		return 1
 	fi
-	echo "ws1 free: load $l1/$n cores, mem ${mem}% available, $sessions sessions, home $home"
+	echo "ws1 free: load $l1/$n cores, mem ${mem}% available, $agents agents, home $home"
 }
 
 result() {
-	local c; c=$(container "${1:-}")
-	# `claude -p` prints its answer on the container's tty, between two [hive] lines.
-	r "podman logs $c 2>&1" | tr -d '\r' | sed 's/\x1b\[[0-9;?]*[a-zA-Z]//g' | awk '
-		/^\[hive\] running the spawn prompt/ { on = 1; next }
-		done { next }   # drain rather than exit: an early exit SIGPIPEs the stages before it
-		/^\[hive\] prompt run ended/ { print > "/dev/stderr"; done = 1; next }
-		on
-		END { if (!done) { print "ws1: brief still running" > "/dev/stderr"; exit 1 } }'
-	r "podman inspect -f '{{with index .Config.Labels \"hive.repo\"}}repo {{.}}, branch {{index \$.Config.Labels \"hive.branch\"}}{{end}}' $c" >&2
+	local id; id=$(run_id "${1:-}")
+	u "d=$RUNS/$id; [ -d \$d ] || { echo 'ws1: no run $id' >&2; exit 64; }
+		[ -f \$d/rc ] || { echo 'ws1: run $id still going' >&2; exit 1; }
+		cat \$d/out; rc=\$(cat \$d/rc)
+		[ \$rc = 0 ] || { echo \"ws1: run $id exited \$rc\" >&2; tail -20 \$d/err >&2; }
+		exit \$rc"
 }
 
 wait_for() {
-	local c; c=$(container "${1:-}")
+	local id; id=$(run_id "${1:-}")
 	local secs="${2:-3600}"
 	[[ "$secs" =~ ^[0-9]+$ ]] || die "timeout must be a number of seconds: $secs"
-	r "end=\$((SECONDS + $secs))
-		until podman logs $c 2>&1 | grep -aq '^\[hive\] prompt run ended'; do
-			[ \"\$(podman inspect -f '{{.State.Status}}' $c)\" = running ] || { echo 'ws1: $c is not running' >&2; exit 5; }
-			[ \$SECONDS -lt \$end ] || { echo 'ws1: $c still running after ${secs}s' >&2; exit 4; }
-			sleep 15
+	u "end=\$((SECONDS + $secs))
+		until [ -f $RUNS/$id/rc ]; do
+			tmux has-session -t ws1-$id 2>/dev/null || [ -f $RUNS/$id/rc ] || { echo 'ws1: run $id died without a result' >&2; exit 5; }
+			[ \$SECONDS -lt \$end ] || { echo 'ws1: run $id still going after ${secs}s' >&2; exit 4; }
+			sleep 5
 		done"
-	result "$c"
+	result "$id"
 }
 
 run() {
-	local args=() words=() wait=0 force=0 brief=
+	local words=() wait=0 force=0 nosync=0 brief=
 	while (($#)); do
 		case "$1" in
-			--repo|--extra|--branch|--name) args+=("$1" "${2:?$1 needs a value}"); shift 2 ;;
 			--wait) wait=1; shift ;;
 			--force) force=1; shift ;;
+			--no-sync) nosync=1; shift ;;
 			-) brief=$(cat); shift ;;
 			-*) die "unknown option $1" ;;
 			*) words+=("$1"); shift ;;
@@ -119,42 +112,32 @@ run() {
 	done
 	((${#words[@]} == 0)) || brief="${brief:+$brief }${words[*]}"
 	[[ -n "$brief" ]] || die "missing brief"
-	((force)) || load >&2 || die "not spawning (run the agent locally, or pass --force)"
+	((force)) || load >&2 || die "not starting (run the agent locally, or pass --force)"
+	if ((nosync)); then remote_paths; else sync >&2; fi
 
-	# The host's own account when one is configured, else the team registry's
-	# highest lendable quota.
-	local line c
-	line=$(printf '%s' "$brief" | r "a=--highest-quota; [ -s ~/.config/claude-hive/claude.token ] && a=
-		$HIVE spawn \$a $(printf '%q ' "${args[@]}") --prompt-file - 2>&1") || die "spawn failed: $line"
-	c=$(grep -o 'claude-hive-[0-9]*-[0-9a-f]*' <<<"$line" | head -1) || die "spawn failed: $line"
-	mkdir -p "${STATE%/*}"
-	{ flock 9; echo "$c" >>"$STATE"; } 9>"$STATE.lock"
-	echo "$line" >&2
-	echo "$c"
-	((wait)) && wait_for "$c"
+	local id; id="$(date +%s)-$RANDOM"
+	# bypassPermissions: nobody is there to answer a prompt, and kannar is an
+	# unprivileged user on a disposable VM, holding no credentials but Claude's.
+	printf '%s' "$brief" | u "set -e; d=$RUNS/$id; mkdir -p \$d; cat >\$d/brief; echo $(printf '%q' "$REMOTE_CWD") >\$d/dir
+		tmux new-session -d -s ws1-$id -c $(printf '%q' "$REMOTE_CWD") \
+			\"$CLAUDE -p --permission-mode bypassPermissions <\$HOME/\$d/brief >\$HOME/\$d/out 2>\$HOME/\$d/err; echo \\\$? >\$HOME/\$d/rc\""
+	echo "$id"
+	((wait)) && wait_for "$id"
 	return 0
 }
 
 list() {
-	r "podman ps -a --filter label=claude-hive --format '{{.Names}}\t{{.Status}}\t{{.Label \"hive.repo\"}}\t{{.Label \"hive.branch\"}}'" \
-		| while IFS=$'\t' read -r name rest; do
-			if grep -qxF "$name" "$STATE" 2>/dev/null; then echo "* $name	$rest"; else echo "  $name	$rest"; fi
-		done
+	u "cd $RUNS 2>/dev/null || exit 0
+		for d in */; do d=\${d%/}; [ -f \$d/dir ] || continue
+			if [ -f \$d/rc ]; then s=\"exit \$(cat \$d/rc)\"; elif tmux has-session -t ws1-\$d 2>/dev/null; then s=running; else s=died; fi
+			printf '%s\t%s\t%s\n' \$d \"\$s\" \"\$(cat \$d/dir)\"
+		done"
 }
 
-kill_session() {
-	local force=0
-	[[ "${1:-}" == --force ]] && { force=1; shift; }
-	local c; c=$(container "${1:-}")
-	local id="${c#claude-hive-}"
-	((force)) || grep -qxF "$c" "$STATE" 2>/dev/null || die "$c was not spawned from here (--force to remove it anyway)"
-	# Same three steps as the TUI's `x`, minus the transcript copy.
-	r "repo=\$(podman inspect -f '{{index .Config.Labels \"hive.repo\"}}' $c 2>/dev/null)
-		podman rm -f -v $c >/dev/null
-		podman secret rm hive-claude-$id >/dev/null 2>&1 || true
-		[ -z \"\$repo\" ] || $HIVE broker revoke --session $id 2>&1 | tail -1"
-	[[ -f "$STATE" ]] && { flock 9; sed -i "\|^$c\$|d" "$STATE"; } 9>"$STATE.lock"
-	echo "killed $c"
+kill_run() {
+	local id; id=$(run_id "${1:-}")
+	u "tmux kill-session -t ws1-$id 2>/dev/null; [ -f $RUNS/$id/rc ] || echo killed >$RUNS/$id/rc"
+	echo "killed $id"
 }
 
 unlock() {
@@ -168,7 +151,8 @@ unlock() {
 lock() {
 	# Drop kannar's multiplexed connection first: its shell would hold the mount busy.
 	ssh -O exit -l kannar "$HOST" 2>/dev/null || true
-	r "! mountpoint -q $RHOME || umount $RHOME; [ ! -e /dev/mapper/kannar-home ] || cryptsetup close kannar-home; echo locked"
+	r "pkill -u kannar tmux; sleep 1
+		! mountpoint -q $RHOME || umount $RHOME; [ ! -e /dev/mapper/kannar-home ] || cryptsetup close kannar-home; echo locked"
 }
 
 # Local git toplevel -> the same path under kannar's home, plus the subdirectory
@@ -191,7 +175,7 @@ sync() {
 	local q; q=$(printf '%q' "$REMOTE_TOP")
 	# tar rather than rsync, which this laptop does not have. Only tracked and
 	# untracked-but-not-ignored files travel, minus the skip-worktree ones, so
-		# gitignored and locally-pinned secrets never leave the laptop and the
+	# gitignored and locally-pinned secrets never leave the laptop and the
 	# remote target/ survives as a build cache. The manifest of the previous
 	# sync is what lets files deleted here be deleted there.
 	(cd "$LOCAL_TOP" && git ls-files -co --exclude-standard -z \
@@ -200,8 +184,16 @@ sync() {
 	u "mkdir -p $q && cd $q && cat >.ws1-manifest.new" <"$TMP"
 	(cd "$LOCAL_TOP" && tar --null -T "$TMP" -cz) | u "cd $q && tar xz &&
 		{ [ ! -f .ws1-manifest ] || sort -z .ws1-manifest | comm -z -23 - <(sort -z .ws1-manifest.new) | xargs -0 -r rm -f; } &&
-		mv .ws1-manifest.new .ws1-manifest"
+		mv .ws1-manifest.new .ws1-manifest &&
+		{ [ -d .git ] || { git init -q && echo .ws1-manifest >>.git/info/exclude; }; } &&
+		git add -A && git -c user.name=ws1 -c user.email=ws1@localhost commit -q --allow-empty -m sync && git tag -f ws1-sync >/dev/null"
 	echo "synced $LOCAL_TOP -> $HOST:$REMOTE_TOP ($(tr -cd '\0' <"$TMP" | wc -c) files)"
+}
+
+# Apply locally with `ws1 diff | git apply`. Covers commits an agent made there too.
+diff_remote() {
+	remote_paths
+	u "cd $(printf '%q' "$REMOTE_TOP") && git add -A -N && git diff --binary ws1-sync"
 }
 
 case "${1:-}" in
@@ -210,11 +202,12 @@ case "${1:-}" in
 	wait) shift; wait_for "$@" ;;
 	result) shift; result "$@" ;;
 	ls) list ;;
-	kill) shift; kill_session "$@" ;;
+	kill) shift; kill_run "$@" ;;
+	diff) diff_remote ;;
 	sync) sync ;;
 	exec) shift; (($#)) || die "missing command"; remote_paths; u "cd $(printf '%q' "$REMOTE_CWD") && $*" ;;
 	unlock) unlock ;;
 	lock) lock ;;
-	sh) shift; exec ssh "$HOST" "$@" ;;
+	sh) shift; exec ssh -l kannar "$HOST" "$@" ;;
 	*) sed -n '2,/^set -euo/{/^set -euo/d;s/^# \{0,1\}//;p}' "$0"; exit 64 ;;
 esac
