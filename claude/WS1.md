@@ -31,6 +31,7 @@ EOF
 - **Its edits stay on ws1 until collected**: review `ws1 diff`, then apply with `ws1 diff | git apply` from the same repo. Collect before the next `sync` or `run` of that repo, which overwrites the remote copies of the files it sends. Parallel agents on the same repo share one remote tree, so give them disjoint files or run them one after another.
 - Its answer is a report, not a verified fact: check the diff here.
 - Keep at most 4 agents running at once unless the user asks for more.
+- Once a task's diffs are collected, run `ws1 clean`: it deletes finished runs and the repo copies they left, and keeps any copy with an agent still running in it or with changes not yet in the laptop's tree (`-n` previews). Never pass `--force` unprompted.
 
 ## Builds and tests on ws1
 

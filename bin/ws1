@@ -31,6 +31,9 @@
 #   ws1 diff                      what changed on ws1 since the last sync, as a patch
 #   ws1 sync                      copy the current git tree to the same path under kannar's home
 #   ws1 exec <command>            run a command there, in the same subdirectory
+#   ws1 clean [-n] [--force]      delete finished runs and the repo copies they left behind
+#       -n          show what would go, delete nothing
+#       --force     also delete copies whose changes are not on the laptop
 #   ws1 unlock | lock             open and mount, or unmount and close, kannar's home
 #   ws1 sh [command]              ssh as kannar
 set -euo pipefail
@@ -196,8 +199,77 @@ diff_remote() {
 	u "cd $(printf '%q' "$REMOTE_TOP") && git add -A -N && git diff --binary ws1-sync"
 }
 
+# Remote copy -> the laptop path it was synced from (inverse of remote_paths).
+local_path() {
+	case "$1" in
+		"$RHOME"/root/*) printf '%s\n' "${1#"$RHOME"/root}" ;;
+		*) printf '%s\n' "$HOME/${1#"$RHOME"/}" ;;
+	esac
+}
+
+# A copy goes when nothing on ws1 is worth keeping: no agent running in it, and
+# its changes since the last sync are none or already in the laptop's tree.
+# Copies nest (a repo and its .claude/worktrees), so they are judged deepest
+# first and a copy holding a kept one is kept too.
+clean() {
+	local dry=0 force=0
+	while (($#)); do
+		case "$1" in
+			-n|--dry-run) dry=1 ;;
+			--force) force=1 ;;
+			*) die "unknown option $1" ;;
+		esac
+		shift
+	done
+
+	# Finished runs. Their records hold the brief and the answer, never code.
+	local finished
+	finished=$(u "cd $RUNS 2>/dev/null || exit 0
+		for d in */; do d=\${d%/}; [ -f \$d/rc ] && ! tmux has-session -t ws1-\$d 2>/dev/null && echo \$d; done; true")
+	if [[ -n "$finished" ]]; then
+		echo "runs: $(wc -l <<<"$finished") finished"
+		((dry)) || u "cd $RUNS && rm -rf $(tr '\n' ' ' <<<"$finished")"
+	fi
+
+	# path <TAB> 1 if it has changes since the sync <TAB> 1 if an agent runs in it
+	local copies
+	copies=$(u "running=\$(cd $RUNS 2>/dev/null && for d in */; do d=\${d%/}; [ -f \$d/rc ] || cat \$d/dir; done)
+		find $RHOME -name .ws1-manifest -not -path '*/target/*' -not -path '*/node_modules/*' 2>/dev/null \
+		| awk '{ print gsub(\"/\", \"/\"), \$0 }' | sort -rn | cut -d' ' -f2- | while read -r m; do
+			d=\${m%/.ws1-manifest}
+			git -C \"\$d\" add -A -N 2>/dev/null
+			if git -C \"\$d\" diff --quiet ws1-sync 2>/dev/null; then ch=0; else ch=1; fi
+			busy=0; for r in \$running; do case \"\$r\" in \"\$d\"/*|\"\$d\") busy=1 ;; esac; done
+			printf '%s\t%s\t%s\n' \"\$d\" \$ch \$busy
+		done; true")
+
+	local d ch busy kept=() gone=() why lp k
+	while IFS=$'\t' read -r d ch busy; do
+		[[ -n "$d" ]] || continue
+		why=
+		for k in "${kept[@]}"; do [[ "$k" == "$d"/* ]] && { why="holds a kept copy"; break; }; done
+		if [[ -z "$why" && "$busy" == 1 ]]; then why="agent running"
+		elif [[ -z "$why" && "$ch" == 1 ]] && ((!force)); then
+			lp=$(local_path "$d")
+			if [[ ! -d "$lp" ]]; then
+				why="changes not collected, and $lp no longer exists"
+			elif ! u "cd $(printf '%q' "$d") && git diff --binary ws1-sync" </dev/null | git -C "$lp" apply --check -R 2>/dev/null; then
+				why="changes not collected: run ws1 diff in $lp"
+			fi
+		fi
+		if [[ -n "$why" ]]; then kept+=("$d"); echo "keep  $d ($why)"
+		else gone+=("$d"); echo "clean $d"; fi
+	done <<<"$copies"
+
+	((dry || ${#gone[@]} == 0)) && return 0
+	# Then the directories left empty between the copies and the home.
+	u "cd $RHOME && rm -rf $(printf '%q ' "${gone[@]}") &&
+		for d in $(printf '%q ' "${gone[@]}"); do rmdir -p --ignore-fail-on-non-empty \"\${d%/*}\" 2>/dev/null; done; du -sh $RHOME"
+}
+
 case "${1:-}" in
 	load) load ;;
+	clean) shift; clean "$@" ;;
 	run) shift; run "$@" ;;
 	wait) shift; wait_for "$@" ;;
 	result) shift; result "$@" ;;
