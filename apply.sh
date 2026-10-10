@@ -62,6 +62,8 @@ MAP=(
   "config/systemd/user/metrics-log.service    $HOME/.config/systemd/user/metrics-log.service"
   "config/systemd/user/weekly-report-nag.service  $HOME/.config/systemd/user/weekly-report-nag.service"
   "config/systemd/user/weekly-report-nag.timer    $HOME/.config/systemd/user/weekly-report-nag.timer"
+  "config/systemd/user/mail-archive.service   $HOME/.config/systemd/user/mail-archive.service"
+  "config/systemd/user/mail-archive.timer     $HOME/.config/systemd/user/mail-archive.timer"
   "claude/statusline.sh    $HOME/.claude/statusline.sh"
   "claude/settings.json    $HOME/.claude/settings.json"
   "claude/commands         $HOME/.claude/commands"

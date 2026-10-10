@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+#
+# mail-search — search the mail archive (index here, messages on the NAS).
+#
+#   mail-search find facture orange --since 2025-01-01
+#   mail-search find 'sender:bank subject:"relevé de compte"' -a gmail
+#   mail-search text relance impayé -a example
+#   mail-search show 123456            # readable; add --raw > mail.eml for the original
+#   mail-search grep 'FR76[0-9 ]{20,}'
+#
+# See mail/search.py --help for the query syntax, mail/README.md for the rest.
+#
+set -euo pipefail
+here="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+exec python3 "$here/mail/search.py" "$@"

@@ -14,6 +14,7 @@ There is no build, no test, no lint. Most changes are one-line tweaks.
 | repo root | home dotfiles under their bare names — `bashrc`, `zshrc`, `vimrc`, `gitconfig`, `tmux`, `bat`, … |
 | `config/` | everything bound to `~/.config`, mirroring the destination path — `config/sway/config`, `config/swaylock/config`, `config/waybar/`, `config/starship.toml`, … |
 | `claude/` | user-level Claude Code config → `~/.claude` (`settings.json`, `statusline.sh`, `commands/`, `agents/`, `hooks/`) |
+| `mail/` | the mail archive: Python behind `bin/mail-archive` and `bin/mail-search` (see [`mail/README.md`](mail/README.md)) |
 | `bin/` | helper scripts (`osd`, `battery-watch`, `disk-watch`, `bt-watch`, `powermenu`, `restic-backup`, `migrate-home`, `pkglist-refresh`, …) called by absolute path (sway config, systemd units, pacman hook) — not symlinked, not on `$PATH` |
 | `system-config/`, `paludis-config/`, `kernelconfig`, `doc/` | read-only snapshots / notes — **not** symlinked; edits here do not propagate |
 
@@ -69,6 +70,13 @@ disk-, hardware-, or secret-specific) and that you must do by hand:
   On a machine restored with `migrate-home`, the existing repo carries over —
   just don't run `init` again. Keep a copy of `RESTIC_PASSWORD` off the
   machine: without it the backups are unreadable.
+- **Mail archive.** `mail-archive.timer` (enabled by `bootstrap.sh`) runs
+  `bin/mail-archive` daily: mail older than 30 days leaves the servers for
+  mbox segments on the NAS, searchable with `bin/mail-search` from a local
+  index. Create `~/.local/share/mail-archive.env` (a `nas=` line and one
+  `account=password` line per password IMAP account), authorise this
+  machine's ssh key on the NAS, and copy the per-account `index.sqlite` files
+  back from it. Details in [`mail/README.md`](mail/README.md).
 - **GPG key.** `gitconfig` signs commits by default — import your secret key or
   commits fail.
 - **SSH keys.** Restore `~/.ssh/` keys; git pushes over SSH (`github:`/`clever:`

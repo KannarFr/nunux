@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+#
+# mail-archive — move mail older than 30 days off the mail servers, onto the NAS.
+#
+#   mail-archive            one incremental pass over every account (archive, verify,
+#                           Trash), refresh the search index, ship the new segments
+#                           to the NAS; one line appended to runs.jsonl
+#   mail-archive status     the last runs, one line each
+#   mail-archive --days 60  any other argument goes to mail/run.py (see --help)
+#
+# The code is in ../mail (start with mail/README.md); local state is in
+# ~/.local/share/mail-archive, settings and passwords in
+# ~/.local/share/mail-archive.env. Scheduled daily by the mail-archive.timer
+# systemd user unit (config/systemd/user/, enabled by bootstrap.sh).
+#
+set -euo pipefail
+
+here="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+state="${MAIL_ARCHIVE_STATE:-$HOME/.local/share/mail-archive}"
+
+if [ "${1:-}" = status ]; then
+  exec python3 - "$state/runs.jsonl" <<'PY'
+import json, sys
+try:
+    lines = open(sys.argv[1]).read().splitlines()[-15:]
+except OSError:
+    sys.exit("no run recorded yet")
+for l in lines:
+    r = json.loads(l)
+    parts = []
+    for acc, a in r["accounts"].items():
+        s = f"+{a.get('archived', 0)}" if a["status"] == "ok" else a["status"]
+        if a["status"] == "failed":
+            s = f"FAILED at {a.get('failed_step')}"
+        ship = a.get("ship", {}).get("status")
+        if ship == "failed":
+            s += " (ship FAILED)"
+        elif ship == "skipped":
+            s += " (not shipped)"
+        parts.append(f"{acc.split('@')[1].split('.')[0]}: {s}")
+    print(f"{r['started'][:16]}  {r['status']:<6}  before {r['cutoff']}  " + "  ".join(parts))
+PY
+fi
+
+exec python3 "$here/mail/run.py" "$@"

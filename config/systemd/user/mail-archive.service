@@ -1,0 +1,14 @@
+[Unit]
+Description=archive mail older than 30 days onto the NAS
+# Skip quietly until the archive is configured (see mail/README.md).
+ConditionPathExists=%h/.local/share/mail-archive.env
+After=network-online.target
+
+[Service]
+Type=oneshot
+Nice=10
+IOSchedulingClass=idle
+# Shipping to the NAS goes over ssh with a key held by gpg-agent; a user service
+# does not inherit the login shell's SSH_AUTH_SOCK (zshrc sets it).
+Environment=SSH_AUTH_SOCK=%t/gnupg/S.gpg-agent.ssh
+ExecStart=%h/git/kannar/nunux/bin/mail-archive

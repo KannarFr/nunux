@@ -115,7 +115,7 @@ fi
 say "Enabling user services"
 enable_usr swaync.service vban-emitter.service vban-receptor.service \
            wireplumber.service pipewire.socket pipewire-pulse.socket gnome-keyring-daemon.socket \
-           restic-backup.timer weekly-report-nag.timer metrics-log.service
+           restic-backup.timer weekly-report-nag.timer mail-archive.timer metrics-log.service
 # The firewall installed in step 8 drops inbound VBAN; nothing logs the drop.
 if systemctl --user cat vban-receptor.service >/dev/null 2>&1; then
   warn "vban-receptor enabled, but udp 6980 is closed: uncomment its rule in system-config/system/nftables.conf"
@@ -224,6 +224,12 @@ cat <<'EOF'
       run bin/restic-backup for the template), then 'bin/restic-backup init'
       unless the repo already exists. The daily timer is enabled above and
       skips quietly until restic.env exists.
+  [ ] Mail archive: create ~/.local/share/mail-archive.env (chmod 600: a nas=
+      line and one account=password line per password IMAP account — see
+      mail/README.md), authorise this machine's ssh key on the NAS, and copy
+      each <account>/index.sqlite back from the NAS into
+      ~/.local/share/mail-archive/. The daily timer is enabled above and
+      skips quietly until the env file exists.
 
   [ ] GPG key: import your secret key (git signs commits by default), e.g.
       gpg --import < key.asc
