@@ -43,6 +43,7 @@ Two repo regions: home dotfiles keep their bare names at the repo root, and ever
 | `claude/hooks/` | `~/.claude/hooks` (Claude Code notification hook scripts + sounds) |
 | `claude/statusline.sh` | `~/.claude/statusline.sh` |
 | `claude/settings.json` | `~/.claude/settings.json` (user-level Claude Code config) |
+| `claude/WS1.md` | `~/.claude/WS1.md` (imported by the untracked `~/.claude/CLAUDE.md` via `@WS1.md`: tells every Claude session to offload agents and builds to the `ws1` VM through `bin/ws1`, and to fall back to the laptop when it is busy) |
 | `claude/commands/` | `~/.claude/commands` (user-defined slash commands) |
 | `claude/agents/` | `~/.claude/agents` (user-defined subagents) |
 | `claude/skills/gitlab-mail/` | `~/.claude/skills/gitlab-mail` (Thunderbird GitLab-mail triage skill + IMAP scripts) |
@@ -56,7 +57,7 @@ Snapshots / not symlinked (read-only references; do not assume edits here propag
 | `paludis-config/*` | `/etc/paludis/*` — Paludis is the Exherbo package manager. Current host is Arch, so this dir is likely archival from a prior install. |
 | `kernelconfig` | `/usr/src/linux/.config` — kernel build snapshot |
 | `mtmux`, `doc/` | utility script + ad-hoc notes; live where they are |
-| `bin/*` | helper scripts (`battery-watch`, `powermenu`, `restic-backup`, `migrate-home`, `pkglist-refresh`, `screenrec`, `tcc-profile`, `charge-profile`, `tcc-snapshot`, `yubikey-glow`, `gpg-sign-glow`, `sway-watchdog`, `journal-check`, `snapshot-prune`, `disk-watch`, `bt-watch`, `metrics-log`, `weekly-report-nag`, `edp-wake`, `mail-archive`, `mail-search`) referenced by absolute path (sway's `set $bin`, systemd units, pacman hooks, waybar `on-click`, swayidle `resume`, gitconfig's `gpg.program`) — not symlinked, not on `$PATH` |
+| `bin/*` | helper scripts (`battery-watch`, `powermenu`, `restic-backup`, `migrate-home`, `pkglist-refresh`, `screenrec`, `tcc-profile`, `charge-profile`, `tcc-snapshot`, `yubikey-glow`, `gpg-sign-glow`, `sway-watchdog`, `journal-check`, `snapshot-prune`, `disk-watch`, `bt-watch`, `metrics-log`, `weekly-report-nag`, `edp-wake`, `mail-archive`, `mail-search`, `ws1`) referenced by absolute path (sway's `set $bin`, systemd units, pacman hooks, waybar `on-click`, swayidle `resume`, gitconfig's `gpg.program`) — not symlinked, not on `$PATH` |
 | `system-config/pkglist-pacman.txt`, `system-config/pkglist-aur.txt` | `pacman -Qqen` / `pacman -Qqem` — explicit packages (official / AUR), for rebuilding a machine |
 | `system-config/system/pacman.d/hooks/*` | `/etc/pacman.d/hooks/*` — pacman hooks: `pkglist-refresh.hook` (auto-refresh the package lists) and `tcc-snapshot.hook` (re-copy `/etc/tcc/*` into the repo via `bin/tcc-snapshot`). Both run PostTransaction as root and `su` to kannar; they only rewrite working-tree files — commit by hand. Snapshotting `/etc/tcc` on a *package* transaction is opportunistic: TCC config actually drifts from GUI edits, so this just sweeps it up next time you run pacman. For *real-time* capture there is also the `tcc-snapshot.path` user unit (inotify on `/etc/tcc/{settings,profiles}`) which runs the same `bin/tcc-snapshot` the instant either file changes — the pacman hook is the fallback for when the path unit isn't running. Both only rewrite the working tree; you still commit. |
 
@@ -102,6 +103,7 @@ If the file may contain secrets, also `git update-index --skip-worktree <path>` 
 
 - **Vim plugins use Vundle**, not vim-plug or lazy.nvim — adding a plugin means a `Plugin '...'` line inside the `vundle#begin/end` block in `vimrc`, then `:PluginInstall`. The `set nocompatible` at the very top is required for Vundle to parse the file.
 - **`gitconfig` is signed-commits-by-default** (`commit.gpgsign = true`) and rebases on pull. Don't suggest changes that assume merge-pull or unsigned commits.
+- **`sshconfig` is public, so `ws1` is not in it.** The repo is public on GitHub; the home-LAN aliases (`ocean`, `pacific`, RFC 1918 addresses) are tracked, while the `ws1` VM's public address and port live in the untracked `~/.ssh/config.local`, pulled in by `Include config.local`. On a rebuild that file must be recreated by hand, or `bin/ws1` and `claude/WS1.md` point at nothing. The same goes for `~/.local/share/ws1-home.key`, the only key to the LUKS-encrypted `/home/kannar` on ws1 (`bin/ws1 unlock` after a VM reboot): it is not in this repo and must be carried over like `restic.env`.
 - **`gitconfig` has URL rewrites**: `clever:foo/bar` → Clever Cloud GitLab, `github:foo/bar` → GitHub over SSH. Preserve these when editing.
 - **`zshrc` is the source of truth for the interactive shell**, `bashrc` is minimal — most aliases/exports go in `zshrc`. The prompt itself comes from `starship.toml` (zshrc only does `eval "$(starship init zsh)"`).
 - **`mtmux`** opens a tiled tmux window with synchronized SSH sessions to every host listed in its argument file, **as root**. Treat changes as security-sensitive.

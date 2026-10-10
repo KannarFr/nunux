@@ -1,4 +1,6 @@
 Include ccadmingeneratedsshconfig
+# Untracked host-specific entries (this repo is public); a missing file is ignored.
+Include config.local
 
 AddKeysToAgent yes
 
@@ -8,6 +10,15 @@ Host *
 
 Host *.clvrcld.net *.clever-cloud.com hv-* cellar-* hadoop-*
   User root
+
+# Home LAN (10.0.0.0/24, static leases). ws1 is in config.local.
+Host ocean
+  HostName 10.0.0.151
+  User kannar
+
+Host pacific
+  HostName 10.0.0.14
+  User kannar
 
 Host aur.archlinux.org
   User aur

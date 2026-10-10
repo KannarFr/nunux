@@ -66,6 +66,7 @@ MAP=(
   "config/systemd/user/mail-archive.timer     $HOME/.config/systemd/user/mail-archive.timer"
   "claude/statusline.sh    $HOME/.claude/statusline.sh"
   "claude/settings.json    $HOME/.claude/settings.json"
+  "claude/WS1.md           $HOME/.claude/WS1.md"
   "claude/commands         $HOME/.claude/commands"
   "claude/agents           $HOME/.claude/agents"
   "claude/hooks            $HOME/.claude/hooks"
