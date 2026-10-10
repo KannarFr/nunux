@@ -11,6 +11,8 @@ Before launching a subagent, a build, a test suite or anything else that will ke
 - **`free` (exit 0): run it on ws1.**
 - **`busy` (exit 1) or unreachable (exit 2): run it on the laptop** as usual, and say so in one line.
 
+A PreToolUse hook (`~/.claude/hooks/ws1-offload.sh`) enforces this in git repos: while ws1 is free it refuses heavy Bash commands (cargo build/test, sbt, docker build, make…) and subagents other than Explore/Plan, saying how to run them on ws1. When the work truly needs the laptop (a phone on adb, a local-only service, the Mac build slave), retry with `WS1_LOCAL=1` in the command or `[ws1:local]` in the agent prompt, and say why.
+
 Cheap work stays local without checking: searches, reading files, short commands, and agents that only read (Explore, Plan). The point is to move CPU and RAM, not every tool call.
 
 ## Agents on ws1
