@@ -85,7 +85,8 @@ result() {
 	# `claude -p` prints its answer on the container's tty, between two [hive] lines.
 	r "podman logs $c 2>&1" | tr -d '\r' | sed 's/\x1b\[[0-9;?]*[a-zA-Z]//g' | awk '
 		/^\[hive\] running the spawn prompt/ { on = 1; next }
-		/^\[hive\] prompt run ended/ { print > "/dev/stderr"; done = 1; exit }
+		done { next }   # drain rather than exit: an early exit SIGPIPEs the stages before it
+		/^\[hive\] prompt run ended/ { print > "/dev/stderr"; done = 1; next }
 		on
 		END { if (!done) { print "ws1: brief still running" > "/dev/stderr"; exit 1 } }'
 	r "podman inspect -f '{{with index .Config.Labels \"hive.repo\"}}repo {{.}}, branch {{index \$.Config.Labels \"hive.branch\"}}{{end}}' $c" >&2
@@ -94,6 +95,7 @@ result() {
 wait_for() {
 	local c; c=$(container "${1:-}")
 	local secs="${2:-3600}"
+	[[ "$secs" =~ ^[0-9]+$ ]] || die "timeout must be a number of seconds: $secs"
 	r "end=\$((SECONDS + $secs))
 		until podman logs $c 2>&1 | grep -aq '^\[hive\] prompt run ended'; do
 			[ \"\$(podman inspect -f '{{.State.Status}}' $c)\" = running ] || { echo 'ws1: $c is not running' >&2; exit 5; }
@@ -104,7 +106,7 @@ wait_for() {
 }
 
 run() {
-	local args=() wait=0 force=0 brief=
+	local args=() words=() wait=0 force=0 brief=
 	while (($#)); do
 		case "$1" in
 			--repo|--extra|--branch|--name) args+=("$1" "${2:?$1 needs a value}"); shift 2 ;;
@@ -112,9 +114,10 @@ run() {
 			--force) force=1; shift ;;
 			-) brief=$(cat); shift ;;
 			-*) die "unknown option $1" ;;
-			*) brief="$*"; break ;;
+			*) words+=("$1"); shift ;;
 		esac
 	done
+	((${#words[@]} == 0)) || brief="${brief:+$brief }${words[*]}"
 	[[ -n "$brief" ]] || die "missing brief"
 	((force)) || load >&2 || die "not spawning (run the agent locally, or pass --force)"
 
@@ -122,10 +125,10 @@ run() {
 	# highest lendable quota.
 	local line c
 	line=$(printf '%s' "$brief" | r "a=--highest-quota; [ -s ~/.config/claude-hive/claude.token ] && a=
-		$HIVE spawn \$a $(printf '%q ' "${args[@]}") --prompt-file -")
+		$HIVE spawn \$a $(printf '%q ' "${args[@]}") --prompt-file - 2>&1") || die "spawn failed: $line"
 	c=$(grep -o 'claude-hive-[0-9]*-[0-9a-f]*' <<<"$line" | head -1) || die "spawn failed: $line"
 	mkdir -p "${STATE%/*}"
-	echo "$c" >>"$STATE"
+	{ flock 9; echo "$c" >>"$STATE"; } 9>"$STATE.lock"
 	echo "$line" >&2
 	echo "$c"
 	((wait)) && wait_for "$c"
@@ -150,7 +153,7 @@ kill_session() {
 		podman rm -f -v $c >/dev/null
 		podman secret rm hive-claude-$id >/dev/null 2>&1 || true
 		[ -z \"\$repo\" ] || $HIVE broker revoke --session $id 2>&1 | tail -1"
-	[[ -f "$STATE" ]] && sed -i "\|^$c\$|d" "$STATE"
+	[[ -f "$STATE" ]] && { flock 9; sed -i "\|^$c\$|d" "$STATE"; } 9>"$STATE.lock"
 	echo "killed $c"
 }
 
@@ -168,12 +171,19 @@ lock() {
 	r "! mountpoint -q $RHOME || umount $RHOME; [ ! -e /dev/mapper/kannar-home ] || cryptsetup close kannar-home; echo locked"
 }
 
-# Local git toplevel -> the same path under kannar's home, plus the subdirectory we are in.
+# Local git toplevel -> the same path under kannar's home, plus the subdirectory
+# we are in. Git repos only: outside one there is no .gitignore to keep secrets
+# back, and a bare `find` would ship ~/.local/share and ~/.ssh wholesale.
 remote_paths() {
-	local top; top=$(git rev-parse --show-toplevel 2>/dev/null) || top=$PWD
+	local top home
+	top=$(git rev-parse --show-toplevel 2>/dev/null) || die "not in a git repository"
+	home=$(realpath "$HOME")
 	LOCAL_TOP=$top
-	if [[ "$top" == "$HOME"/* ]]; then REMOTE_TOP="$RHOME/${top#"$HOME"/}"; else REMOTE_TOP="$RHOME/work/${top##*/}"; fi
-	REMOTE_CWD="$REMOTE_TOP${PWD#"$top"}"
+	case "$top" in
+		"$home"/*) REMOTE_TOP="$RHOME/${top#"$home"/}" ;;
+		*) REMOTE_TOP="$RHOME/root${top}" ;;   # full path, so two repos named alike never share a directory
+	esac
+	REMOTE_CWD="$REMOTE_TOP/$(git rev-parse --show-prefix)"
 }
 
 sync() {
@@ -181,10 +191,11 @@ sync() {
 	local q; q=$(printf '%q' "$REMOTE_TOP")
 	# tar rather than rsync, which this laptop does not have. Only tracked and
 	# untracked-but-not-ignored files travel, minus the skip-worktree ones, so
-	# gitignored and locally-pinned secrets never leave the laptop and the remote target/ survives as a build cache. The manifest
-	# of the previous sync is what lets files deleted here be deleted there.
-	(cd "$LOCAL_TOP" && { git ls-files -co --exclude-standard -z 2>/dev/null || find . -type f -print0; } \
-		| grep -zvxFf <(git ls-files -v 2>/dev/null | sed -n 's/^S //p'; echo .ws1-manifest) \
+		# gitignored and locally-pinned secrets never leave the laptop and the
+	# remote target/ survives as a build cache. The manifest of the previous
+	# sync is what lets files deleted here be deleted there.
+	(cd "$LOCAL_TOP" && git ls-files -co --exclude-standard -z \
+		| grep -zvxFf <(git ls-files -v -z | sed -zn 's/^S //p' | tr '\0' '\n'; echo .ws1-manifest) \
 		| while IFS= read -r -d '' f; do [[ -e "$f" || -L "$f" ]] && printf '%s\0' "$f"; done >"$TMP")
 	u "mkdir -p $q && cd $q && cat >.ws1-manifest.new" <"$TMP"
 	(cd "$LOCAL_TOP" && tar --null -T "$TMP" -cz) | u "cd $q && tar xz &&
