@@ -37,7 +37,7 @@ ws1 sync                        # copy the git tree to the same path under /home
 ws1 exec 'cargo test -p foo'    # run there, in the same subdirectory
 ```
 
-Only git repos can be synced. `sync` sends tracked and untracked-but-not-ignored files only, so the remote `target/` survives as a build cache and gitignored or skip-worktree files stay local; files deleted here are deleted there on the next sync. The host has cargo, node, gcc and python; it has no java, sbt or docker.
+Only git repos can be synced. `sync` sends tracked and untracked-but-not-ignored files only, so the remote `target/` survives as a build cache and gitignored or skip-worktree files stay local; files deleted here are deleted there on the next sync. The host has cargo, node, gcc, python, java 21 (default; 25 also installed), sbt and docker with compose and buildx; kannar is in the `docker` group. Docker publishes ports on 127.0.0.1 only (the VM is on the internet, with no firewall) and keeps its data in `/data/docker`, outside the encrypted home.
 
 ## The encrypted home
 
