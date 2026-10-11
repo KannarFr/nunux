@@ -12,6 +12,8 @@ It is the user's own desktop, not a build server: do not start long jobs on it w
 
 **It also serves production**: `ai.myleapp.fr`, the LLM behind Myle's MyleAI assistant (Ollama in a docker container named `ollama` on the RTX 3080 Ti, behind nginx; setup in the myle repo's `local-ai/`). So rebooting it, booting it into Windows, restarting docker or nginx, or loading anything else onto its GPU takes MyleAI down or slows it, for real customers. Ask first. The model needs 7.6 of the card's 12 GB; past the rest, Ollama puts part of the model on the CPU and answers much more slowly.
 
+It also runs **Home Assistant** (`~/homeassistant/compose.yaml`, container `homeassistant`, host networking, `http://ocean:8123`). Its LAN-only firewall rules are the `homeassistant:` lines in ocean's `/etc/nftables.conf` (8123/tcp, SSDP replies, Shelly CoIoT 5683/udp). It goes down with ocean.
+
 ## pacific
 
 Mac mini M2 (8 cores, 8G RAM, as of 2026-10-11), the iOS build machine for myle-mobile (`eas build --local`, Xcode, fastlane, CocoaPods). Known traps:
