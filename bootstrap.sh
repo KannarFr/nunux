@@ -112,6 +112,13 @@ if [ "${HW_INSTALLED:-0}" -eq 1 ]; then
   enable_sys tccd.service tccd-sleep.service
 fi
 
+# docker without sudo. The group is root-equivalent: only worth it for a user who
+# already has sudo, which is the only kind this script sets up.
+if getent group docker >/dev/null && ! id -nG "$USER" | tr ' ' '\n' | grep -qx docker; then
+  sudo usermod -aG docker "$USER"
+  echo "  added $USER to the docker group (takes effect at next login)"
+fi
+
 say "Enabling user services"
 enable_usr swaync.service vban-emitter.service vban-receptor.service \
            wireplumber.service pipewire.socket pipewire-pulse.socket gnome-keyring-daemon.socket \
