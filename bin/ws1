@@ -232,6 +232,8 @@ clean() {
 	fi
 
 	# path <TAB> 1 if it has changes since the sync <TAB> 1 if an agent runs in it
+	# <TAB> 1 if synced in the last 10 minutes (a sync then run --no-sync leaves a
+	# window where the copy has no agent yet: another session's clean must not take it)
 	local copies
 	copies=$(u "running=\$(cd $RUNS 2>/dev/null && for d in */; do d=\${d%/}; [ -f \$d/rc ] || cat \$d/dir; done)
 		find $RHOME -name .ws1-manifest -not -path '*/target/*' -not -path '*/node_modules/*' 2>/dev/null \
@@ -240,15 +242,17 @@ clean() {
 			git -C \"\$d\" add -A -N 2>/dev/null
 			if git -C \"\$d\" diff --quiet ws1-sync 2>/dev/null; then ch=0; else ch=1; fi
 			busy=0; for r in \$running; do case \"\$r\" in \"\$d\"/*|\"\$d\") busy=1 ;; esac; done
-			printf '%s\t%s\t%s\n' \"\$d\" \$ch \$busy
+			fresh=0; [ -n \"\$(find \"\$m\" -mmin -10)\" ] && fresh=1
+			printf '%s\t%s\t%s\t%s\n' \"\$d\" \$ch \$busy \$fresh
 		done; true")
 
-	local d ch busy kept=() gone=() why lp k
-	while IFS=$'\t' read -r d ch busy; do
+	local d ch busy fresh kept=() gone=() why lp k
+	while IFS=$'\t' read -r d ch busy fresh; do
 		[[ -n "$d" ]] || continue
 		why=
 		for k in "${kept[@]}"; do [[ "$k" == "$d"/* ]] && { why="holds a kept copy"; break; }; done
 		if [[ -z "$why" && "$busy" == 1 ]]; then why="agent running"
+		elif [[ -z "$why" && "$fresh" == 1 ]] && ((!force)); then why="synced less than 10 minutes ago"
 		elif [[ -z "$why" && "$ch" == 1 ]] && ((!force)); then
 			lp=$(local_path "$d")
 			if [[ ! -d "$lp" ]]; then
