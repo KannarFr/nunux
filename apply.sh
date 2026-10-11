@@ -67,6 +67,7 @@ MAP=(
   "claude/statusline.sh    $HOME/.claude/statusline.sh"
   "claude/settings.json    $HOME/.claude/settings.json"
   "claude/WS1.md           $HOME/.claude/WS1.md"
+  "claude/HOSTS.md         $HOME/.claude/HOSTS.md"
   "claude/commands         $HOME/.claude/commands"
   "claude/agents           $HOME/.claude/agents"
   "claude/hooks            $HOME/.claude/hooks"
@@ -165,6 +166,18 @@ for entry in "${MAP[@]}"; do
 done
 for skill_name in commit patch-and-deploy; do
   copy_skill "$skill_name"
+done
+
+# ~/.claude/CLAUDE.md is untracked (it also holds machine-local imports), but
+# the instruction files linked above only take effect if it imports them.
+# Append any missing import; never rewrite the file.
+for f in WS1.md HOSTS.md; do
+  if grep -qxF "@$f" "$HOME/.claude/CLAUDE.md" 2>/dev/null; then
+    printf '  ok    ~/.claude/CLAUDE.md imports %s\n' "$f"
+  else
+    printf '  add   @%s to ~/.claude/CLAUDE.md\n' "$f"
+    [ "$DRY" -eq 0 ] && printf '\n@%s\n' "$f" >> "$HOME/.claude/CLAUDE.md"
+  fi
 done
 
 # Secret-scanning pre-commit hook. Set per-repo, never globally: core.hooksPath
