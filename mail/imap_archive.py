@@ -298,6 +298,54 @@ def trash(account):
     status(account)
 
 
+def purge(account, really):
+    """Empty the server's Trash of what WE put there, and only that (Orange and OVH never empty it).
+
+    A Trash message goes only if its Message-ID (unique in the Trash) and RFC822 size match a message
+    this tool archived and moved there (state 'trashed'), whose segment is shipped to the NAS. Anything
+    else in the Trash (mail deleted by hand, never archived) stays. Dry run unless `really`."""
+    db, _ = db_open(account)
+    known = {}
+    for mid, size in db.execute("select message_id, size from msgs where state='trashed' and message_id is not null "
+                                "and file in (select file from shipped)"):
+        known.setdefault(mid, set()).add(size)
+    m = connect(account)
+    tname = '"' + ACCOUNTS[account]["trash"] + '"'
+    if select(m, tname, readonly=not really) is None:
+        sys.exit("no Trash folder " + tname)
+    typ, d = m.uid("SEARCH", None, "ALL")
+    uids = d[0].split() if typ == "OK" and d and d[0] else []
+    seen, cand = {}, []
+    for i in range(0, len(uids), 500):
+        typ, data = m.uid("FETCH", b",".join(uids[i:i + 500]).decode(),
+                          "(RFC822.SIZE BODY.PEEK[HEADER.FIELDS (MESSAGE-ID)])")
+        for item in data:
+            if not isinstance(item, tuple):
+                continue
+            meta = item[0].decode()
+            uid = re.search(r"UID (\d+)", meta).group(1)
+            size = int(re.search(r"RFC822\.SIZE (\d+)", meta).group(1))
+            mid = re.sub(r"(?is)^message-id:\s*", "", item[1].decode("utf-8", "replace").strip()).strip() or None
+            seen[mid] = seen.get(mid, 0) + 1
+            cand.append((uid, mid, size))
+    gone = [u for u, mid, size in cand if mid and seen[mid] == 1 and size in known.get(mid, ())]
+    print(f"  Trash: {len(uids)} messages, {len(gone)} archived by this tool and shipped, "
+          f"{len(uids) - len(gone)} kept", flush=True)
+    if not really or not gone:
+        m.logout()
+        return
+    if b"UIDPLUS" not in b" ".join(m.capability()[1]):
+        sys.exit("server lacks UIDPLUS: refusing a plain EXPUNGE that could take other deleted mail")
+    for i in range(0, len(gone), 200):
+        rng = ga.ranges([int(u) for u in gone[i:i + 200]])
+        m.uid("STORE", rng, "+FLAGS.SILENT", "(\\Deleted)")
+        typ, dd = m.uid("EXPUNGE", rng)
+        if typ != "OK":
+            sys.exit(f"expunge failed: {dd}")
+    print(f"  {len(gone)} deleted from the Trash", flush=True)
+    m.logout()
+
+
 def status(account):
     db, _ = db_open(account)
     for state, source, n, size in db.execute(
@@ -308,7 +356,8 @@ def status(account):
 
 if __name__ == "__main__":
     account, cutoff, cmd = sys.argv[1], sys.argv[2], sys.argv[3]
-    n = int(sys.argv[4]) if len(sys.argv) > 4 else 300
+    n = int(sys.argv[4]) if len(sys.argv) > 4 and sys.argv[4].isdigit() else 300
     {"plan": lambda: plan(account, cutoff), "local": lambda: local(account), "fetch": lambda: fetch(account),
      "verify": lambda: sys.exit(1 if verify(account) else 0), "spotcheck": lambda: sys.exit(1 if spotcheck(account, n) else 0),
-     "trash": lambda: trash(account), "status": lambda: status(account)}[cmd]()
+     "trash": lambda: trash(account), "status": lambda: status(account),
+     "purge": lambda: purge(account, "--yes" in sys.argv)}[cmd]()

@@ -66,7 +66,12 @@ shows `(not shipped)` or `(ship FAILED)`.
     systemctl --user list-timers mail-archive.timer
 
 Gmail empties its Trash by itself after 30 days. **Orange and OVH do not**: their Trash keeps
-growing on the server until it is emptied by hand.
+growing on the server. `purge` empties it of what this tool put there, and only that — a Trash
+message goes if its Message-ID (unique in the Trash) and size match a message the tool archived,
+moved there, and shipped to the NAS; mail deleted by hand stays. Dry run without `--yes`:
+
+    python3 mail/imap_archive.py <account> x purge          # counts only
+    python3 mail/imap_archive.py <account> x purge --yes    # delete (needs UIDPLUS)
 
 ## Settings: `~/.local/share/mail-archive.env`
 
