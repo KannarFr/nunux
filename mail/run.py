@@ -10,6 +10,7 @@ account failed. Password accounts with no line in the settings file are skipped.
 
 Then the search index is refreshed from the new segments, and the segments are shipped to the NAS
 (checksum-verified, then removed here). With the NAS unreachable they simply wait for the next run.
+Last, the NAS takes a restic snapshot of the archive (`restic=` in the settings; see store.backup).
 """
 import argparse, datetime, fcntl, json, os, socket, sqlite3, subprocess, sys
 import gmail_archive, imap_archive, search, store
@@ -100,9 +101,12 @@ def main():
             if os.path.exists(os.path.join(DATA, account, "index.sqlite")):
                 run["accounts"][account]["ship"] = store.ship(account)
                 print(f"== ship {account}", json.dumps(run["accounts"][account]["ship"]), flush=True)
+    # The NAS holds the only copy of the mail: a restic snapshot of it, once everything is shipped.
+    run["backup"] = store.backup()
+    print("== backup", json.dumps(run["backup"]), flush=True)
     run["finished"] = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
     states = {r["status"] for r in run["accounts"].values()} | \
-             {r.get("ship", {}).get("status") for r in run["accounts"].values()}
+             {r.get("ship", {}).get("status") for r in run["accounts"].values()} | {run["backup"]["status"]}
     run["status"] = "failed" if "failed" in states else "ok"
     with open(RUNS, "a") as f:
         f.write(json.dumps(run, ensure_ascii=False) + "\n")

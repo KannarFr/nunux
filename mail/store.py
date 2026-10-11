@@ -15,7 +15,7 @@ Settings come from ~/.local/share/mail-archive.env (chmod 600), `key=value` line
     imap.<address>=<host>|<Thunderbird cache dir>|<Trash folder name>
     <address>=<password>             one per imap.<address>
 """
-import datetime, hashlib, os, shlex, shutil, sqlite3, subprocess, sys
+import datetime, hashlib, json, os, shlex, shutil, sqlite3, subprocess, sys
 
 STATE = os.path.expanduser(os.environ.get("MAIL_ARCHIVE_STATE", "~/.local/share/mail-archive"))
 CONFIG = os.path.expanduser(os.environ.get("MAIL_ARCHIVE_CONFIG", "~/.local/share/mail-archive.env"))
@@ -163,3 +163,37 @@ def ship_file(local, name):
             put(tmp, f"{nas()[1]}/{name}")
         finally:
             os.remove(tmp)
+
+
+def backup():
+    """A restic snapshot of the archive, made BY THE NAS (the bytes go from there to the repository).
+
+    Settings: `restic=<env file on the NAS>` (it exports RESTIC_REPOSITORY, RESTIC_PASSWORD, the S3
+    keys and optional RESTIC_OPTS; chmod 600, never here) and optional `restic_bin=` (default
+    `~/bin/restic`). Sundays also forget + prune (7 daily, 4 weekly, 12 monthly snapshots); the 1st
+    of the month also reads back 5 % of the data. Not configured = skipped."""
+    env = (config("restic") or "").strip()
+    if not env or nas() is None:
+        return {"status": "skipped"}
+    bin_ = (config("restic_bin") or "~/bin/restic").strip()
+    base = f". {env} && {bin_} $RESTIC_OPTS"
+    script = f"{base} backup --tag mail-archive --retry-lock 10m --json --quiet {shlex.quote(nas()[1])}"
+    today = datetime.date.today()
+    if today.weekday() == 6:
+        script += f" && {base} forget --tag mail-archive --retry-lock 10m --prune --keep-daily 7 --keep-weekly 4 --keep-monthly 12 >/dev/null"
+    if today.day == 1:
+        script += f" && {base} check --retry-lock 10m --read-data-subset 5% >/dev/null"
+    try:
+        r = sh(script, timeout=6 * 3600)
+    except (OSError, subprocess.SubprocessError) as e:
+        return {"status": "failed", "error": str(e)}
+    out = {"status": "ok" if r.returncode == 0 else "failed"}
+    for line in r.stdout.decode("utf-8", "replace").splitlines():
+        if '"message_type":"summary"' in line.replace(" ", ""):
+            j = json.loads(line)
+            out.update(snapshot=j.get("snapshot_id", "")[:8], files_new=j.get("files_new"),
+                       bytes_added=j.get("data_added"))
+    if r.returncode != 0:
+        out["error"] = r.stderr.decode("utf-8", "replace").strip().splitlines()[-3:]
+    return out
+

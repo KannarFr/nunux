@@ -79,6 +79,8 @@ growing on the server until it is emptied by hand.
     imap.someone@example.org=imap.example.org|ImapMail/imap.example.org|INBOX/Trash
                                                                   # host | Thunderbird cache | Trash folder
     someone@example.org=…                                         # its password
+    restic=~/.config/restic-mail.env                              # optional: on the NAS, see below
+    restic_bin=~/bin/restic                                       # optional (this is the default)
 
 - `nas=` is an ssh target (key authentication, no prompt: the timer runs unattended) or a plain
   directory (`nas=/mnt/nas/mail-archive`) when the share is mounted. The NAS only needs `sh`, `cat`,
@@ -91,9 +93,20 @@ growing on the server until it is emptied by hand.
 
 ## What is and is not backed up
 
-The mail exists once, on the NAS: its safety is the NAS's (RAID, QTS snapshots). The local indexes can
-be rebuilt from the NAS copies of `index.sqlite` (then `mail-search index`, which re-reads every
-message over ssh — slow). There is no second copy of the segments unless the NAS itself is backed up.
+The mail lives on the NAS. With `restic=` set, every run ends with a restic snapshot of the whole
+archive directory, made by the NAS itself (so the bytes go straight from the NAS to the repository):
+`restic` is a static binary in the NAS user's `~/bin` (no QTS package), and the `restic=` file ON THE
+NAS (chmod 600) exports `RESTIC_REPOSITORY`, `RESTIC_PASSWORD`, `AWS_ACCESS_KEY_ID`,
+`AWS_SECRET_ACCESS_KEY`, `RESTIC_OPTS` (`-o s3.bucket-lookup=path` for Cellar) and `TMPDIR` (a
+directory in the NAS user's home: QTS's `/tmp` is a few MB and restic writes its packs there). Sundays add
+`forget --prune` (7 daily, 4 weekly, 12 monthly), the 1st of the month `check --read-data-subset 5%`.
+`mail-archive status` shows the snapshot and the bytes added, or `backup: FAILED`. Keep a copy of the
+repository password OFF the NAS (password manager): without it the snapshots are unreadable.
+
+    ssh <nas> '. ~/.config/restic-mail.env && ~/bin/restic $RESTIC_OPTS snapshots'
+
+The local indexes can be rebuilt from the NAS copies of `index.sqlite` (then `mail-search index`,
+which re-reads every message over ssh — slow).
 
 To add an account, add its `gmail.` or `imap.` line (and a password line for `imap.`); the next run
 takes it in.

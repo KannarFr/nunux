@@ -38,6 +38,11 @@ for l in lines:
         elif ship == "skipped":
             s += " (not shipped)"
         parts.append(f"{acc.split('@')[1].split('.')[0]}: {s}")
+    b = r.get("backup", {})
+    if b.get("status") == "ok":
+        parts.append(f"backup: {b.get('snapshot', 'ok')} +{(b.get('bytes_added') or 0) / 1e6:.0f} MB")
+    elif b.get("status") == "failed":
+        parts.append("backup: FAILED")
     print(f"{r['started'][:16]}  {r['status']:<6}  before {r['cutoff']}  " + "  ".join(parts))
 PY
 fi
