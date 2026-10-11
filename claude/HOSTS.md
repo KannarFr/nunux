@@ -12,7 +12,13 @@ It is the user's own desktop, not a build server: do not start long jobs on it w
 
 **It also serves production**: `ai.myleapp.fr`, the LLM behind Myle's MyleAI assistant (Ollama in a docker container named `ollama` on the RTX 3080 Ti, behind nginx; setup in the myle repo's `local-ai/`). So rebooting it, booting it into Windows, restarting docker or nginx, or loading anything else onto its GPU takes MyleAI down or slows it, for real customers. Ask first. The model needs 7.6 of the card's 12 GB; past the rest, Ollama puts part of the model on the CPU and answers much more slowly.
 
-It also runs **Home Assistant** (`~/homeassistant/compose.yaml`, container `homeassistant`, host networking, `http://ocean:8123`). Its LAN-only firewall rules are the `homeassistant:` lines in ocean's `/etc/nftables.conf` (8123/tcp, SSDP replies, Shelly CoIoT 5683/udp). It goes down with ocean.
+It also runs **Home Assistant** (`~/homeassistant/compose.yaml`, container `homeassistant`, host networking, `http://ocean:8123`, or `http://ha.home` through the NAS's LAN proxy). Its LAN-only firewall rules are the `homeassistant:` lines in ocean's `/etc/nftables.conf` (8123/tcp, 1883/tcp MQTT, SSDP replies, Shelly CoIoT 5683/udp). It goes down with ocean. What to know before touching it:
+
+- The site is a farm: HA floors are used as buildings (Maison, Ferme, Chez Louise, the sister's house next door, on the same UniFi network). The main dashboard is `/dashboard-ferme`. Electricity is EDF Tempo 18 kVA three-phase (6 kVA per phase); `config/packages/tempo.yaml` holds the Tempo colour, HC/HP period and kWh price sensors, and the prices are `input_number.tempo_prix_*` helpers.
+- The water heater (Shelly Pro 4PM in the cellier, output O3) is driven by a script on the Shelly itself ("Tempo + heures creuses"), which reapplies its state every 5 minutes: switching it from HA does not stick.
+- **The `http:` block in `configuration.yaml` is ignored** since HA 2026: HTTP settings (reverse-proxy trust for the NAS, 10.0.0.165) live in `config/.storage/http`. Edit that with HA stopped.
+- API access: a long-lived token in `~/homeassistant/claude.token` (mode 600; never print it, or `unifi.cred`, `unifi-protect.key`, `backup.key`, `mosquitto/*.password` next to it). The websocket API is reached with a small aiohttp script run inside the container (`docker exec -i -e HA_TOKEN=... homeassistant python -`).
+- Backups: HA makes an encrypted backup daily at 04:15 (keeps 7, key in `backup.key`), and the user timer `ha-backup-copy.timer` rsyncs them at 05:00 to the NAS (`/share/homes/kannar/ha-backups/`) with `~/.ssh/ha-backup`, a key the NAS only accepts from ocean for that one rsync.
 
 ## pacific
 
