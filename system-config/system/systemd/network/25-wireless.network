@@ -4,6 +4,9 @@ WLANInterfaceType=station
 
 [Network]
 DHCP=yes
+# .home names (UDM DNS records: ha.home, nas.home, unifi.home) go to this link's DNS,
+# even though something sets a global ~. resolver (8.8.8.8) at runtime
+Domains=~home
 
 [DHCPv4]
 RouteMetric=2048
