@@ -10,6 +10,8 @@ Desktop PC, dual boot: Windows on its own disk, Arch Linux on a second disk (ins
 
 It is the user's own desktop, not a build server: do not start long jobs on it without asking. For offloaded work, `ws1` is the default.
 
+**It also serves production**: `ai.myleapp.fr`, the LLM behind Myle's MyleAI assistant (Ollama in a docker container named `ollama` on the RTX 3080 Ti, behind nginx; setup in the myle repo's `local-ai/`). So rebooting it, booting it into Windows, restarting docker or nginx, or loading anything else onto its GPU takes MyleAI down or slows it, for real customers. Ask first. The model needs 7.6 of the card's 12 GB; past the rest, Ollama puts part of the model on the CPU and answers much more slowly.
+
 ## pacific
 
 Mac mini M2 (8 cores, 8G RAM, as of 2026-10-11), the iOS build machine for myle-mobile (`eas build --local`, Xcode, fastlane, CocoaPods). Known traps:
