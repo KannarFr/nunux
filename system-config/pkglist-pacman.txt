@@ -55,6 +55,7 @@ github-cli
 glab
 gnome-bluetooth-3.0
 go
+googleworkspace-cli
 gpaste
 gradle
 grub

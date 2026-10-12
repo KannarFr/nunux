@@ -148,6 +148,15 @@ alias l='ls -CF'
 alias ll='ls -alFh'
 alias mtmux='/home/kannar/git/kannar/nunux/mtmux'
 
+# Google Workspace CLI: one config dir (OAuth client + token) per account,
+# picked from where the command runs — the Clever Cloud account under ~/git/cc,
+# the personal one everywhere else. An explicit GOOGLE_WORKSPACE_CLI_CONFIG_DIR wins.
+gws() {
+    local account=perso
+    [[ $PWD == $HOME/git/cc(|/*) ]] && account=clever
+    GOOGLE_WORKSPACE_CLI_CONFIG_DIR=${GOOGLE_WORKSPACE_CLI_CONFIG_DIR:-$HOME/.config/gws/$account} command gws "$@"
+}
+
 # No beep ever
 unsetopt beep
 
