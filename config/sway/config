@@ -170,14 +170,13 @@ exec kanshi
     bindsym $mod+m exec handy --toggle-transcription
     bindsym $mod+Shift+m exec handy --cancel
 
-    # Friendly: open a text box AND auto-start Handy dictation into it, then pick
-    # a tone, rewrite, and copy the result. Tap $mod+m to stop dictation (Handy
-    # types the transcription into the box), then Enter. Esc cancels and stops
-    # the dictation (handy --cancel).
-    # NB: `friendly` is a SEPARATE repo (~/git/kannar/friendly), not part of this
-    # dotfiles repo and not created by apply.sh/bootstrap.sh — clone it there or
-    # this binding silently no-ops.
-    bindsym $mod+y exec /home/kannar/git/kannar/friendly/friendly --on-open 'handy --toggle-transcription' --on-cancel 'handy --cancel'
+    # Friendly (AUR `friendly`, see pkglist-aur.txt): open a text box that records
+    # the mic itself (--stt handy: built-in dictation via `handy --transcribe-file`,
+    # no Handy overlay; pinned rather than -d/auto so a missing handy fails loudly
+    # instead of silently falling back to whisper). Enter stops and transcribes
+    # into the box, Enter again picks a tone, rewrites, and copies the result.
+    # Ctrl+Enter stops and submits, Esc cancels.
+    bindsym $mod+y exec /usr/bin/friendly --stt handy
 
     # dropdown (quake-style) terminal: ² toggles the scratchpad foot instance
     bindsym $mod+twosuperior [app_id="dropdown"] scratchpad show

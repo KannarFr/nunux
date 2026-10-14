@@ -4,6 +4,7 @@ claude-code
 clever-tools-bin
 codeburn
 cura-bin
+friendly
 germinal
 gitlab-inbox-bin
 google-chrome
