@@ -94,6 +94,12 @@ set $menu bemenu-run -l 15 -H 30 --fn "JetBrainsMono Nerd Font 11"
 # is never left at scale 1.
 output eDP-1 scale 1.4
 exec kanshi
+# A sway reload reapplies only the output lines above, so a docked external
+# drops back to scale 1; kanshi does not notice (no hotplug). Ask the running
+# kanshi to reapply its profile on every reload. `kanshictl reload` talks to the
+# daemon, it never starts a second one; at login it may run before kanshi is up
+# and fail harmlessly.
+exec_always kanshictl reload
 
 ### Idle configuration
 #
