@@ -26,11 +26,7 @@ TB_DIRS = store.accounts("gmail")  # address -> Thunderbird's local store for th
 
 
 def connect(account):
-    g.ACCOUNT = account
-    tok = g.access_token()
-    m = imaplib.IMAP4_SSL("imap.gmail.com")
-    m.authenticate("XOAUTH2", lambda _: f"user={account}\x01auth=Bearer {tok}\x01\x01".encode())
-    return m
+    return g.connect(account)
 
 
 def all_mail(m, readonly=True):
