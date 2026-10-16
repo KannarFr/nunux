@@ -24,6 +24,22 @@ If the user names only some people, still ask/confirm whether kannar is included
 Default: Monday → Friday of the current week (or since the day after the previous report's end
 if the user pastes it). State the dates in the header as `DD/MM–DD/MM`.
 
+**The previous weekend counts when there is material.** The last report ended on a Friday, so
+Saturday and Sunday before this Monday fall in no report unless this one picks them up. Check
+them first, for all four people:
+
+```bash
+SAT=YYYY-MM-DD; MON=YYYY-MM-DD   # the Saturday before the period, and its Monday
+git log origin/main --since=$SAT --until=$MON -i --author=<match> --format='%ad %s' --date=short
+glab mr list --author=<user> --merged -F json -P 40 | jq -r --arg s $SAT --arg m $MON '.[] | select(.merged_at >= $s and .merged_at < $m) | "\(.iid) \(.merged_at[:10]) \(.title)"'
+```
+
+If anything comes back (a commit on main or a merged MR), start the period on that Saturday:
+use `SINCE=$SAT` for every query below and write the header from the Saturday
+(e.g. `semaine du 10/10–16/10`). Fold the weekend's items into the themes like any other — no
+separate « week-end » section. If nothing came back, keep Monday. When the user pasted the previous
+report, its end date decides instead: start the day after it, whatever weekday that is.
+
 ## Gather (run from the axo repo root)
 
 ```bash
