@@ -3,7 +3,7 @@ saved Google OAuth refresh token (no password, no browser), through the mail
 archive's thunderbird_oauth module in this repo."""
 import os, sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../../mail"))
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../../mail"))
 import thunderbird_oauth
 
 ACCOUNT = "alexandre.duval@clever.cloud"

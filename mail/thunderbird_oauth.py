@@ -27,8 +27,8 @@ def logins(account):
     return (account,)
 
 
-def refresh_token(account):
-    """(login, refresh token) for the first of logins(account) Thunderbird has a token for."""
+def refresh_tokens(account):
+    """[(login, refresh token)] for each of logins(account) Thunderbird has a token for, in that order."""
     prof = profile()
     nss = ctypes.CDLL("libnss3.so")
     if nss.NSS_Init(("sql:" + prof).encode()) != 0:
@@ -47,25 +47,31 @@ def refresh_token(account):
             name = dec(l["encryptedUsername"])
             if name in wanted:
                 saved.setdefault(name, l["encryptedPassword"])
-    for name in wanted:
-        if name in saved:
-            return name, dec(saved[name])
-    raise SystemExit("no refresh token for " + " or ".join(wanted))
+    found = [(name, dec(saved[name])) for name in wanted if name in saved]
+    if not found:
+        raise SystemExit("no refresh token for " + " or ".join(wanted))
+    return found
 
 
 def access_token(account):
-    """(login, access token); authenticate as that login, the one the token was saved under."""
-    login, refresh = refresh_token(account)
-    body = urllib.parse.urlencode({
-        "client_id": CLIENT_ID, "client_secret": CLIENT_SECRET,
-        "refresh_token": refresh, "grant_type": "refresh_token",
-    }).encode()
-    try:
-        with urllib.request.urlopen("https://oauth2.googleapis.com/token", body) as r:
-            return login, json.load(r)["access_token"]
-    except urllib.error.HTTPError as e:
-        raise SystemExit(f"token refresh for {login} failed ({e.code} {e.read().decode(errors='replace')}); "
-                         "open Thunderbird so it signs in to that account again")
+    """(login, access token) from the first saved login whose refresh token Google still accepts;
+    authenticate as that login. A revoked token (HTTP 400/401) moves on to the next login; any other
+    error propagates as an OSError so callers can retry it."""
+    refused = []
+    for login, refresh in refresh_tokens(account):
+        body = urllib.parse.urlencode({
+            "client_id": CLIENT_ID, "client_secret": CLIENT_SECRET,
+            "refresh_token": refresh, "grant_type": "refresh_token",
+        }).encode()
+        try:
+            with urllib.request.urlopen("https://oauth2.googleapis.com/token", body) as r:
+                return login, json.load(r)["access_token"]
+        except urllib.error.HTTPError as e:
+            if e.code not in (400, 401):
+                raise
+            refused.append(f"{login}: {e.code} {e.read().decode(errors='replace').strip()}")
+    raise SystemExit("Google refused every saved token (" + "; ".join(refused) + "); "
+                     "open Thunderbird so it signs in to that account again")
 
 
 def connect(account):
