@@ -128,7 +128,6 @@ ranger
 reflector
 remmina
 rofi
-rtkit
 ruby
 rxvt-unicode
 s3cmd

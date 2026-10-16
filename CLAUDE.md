@@ -32,7 +32,7 @@ Two repo regions: home dotfiles keep their bare names at the repo root, and ever
 | `config/mimeapps.list` | `~/.config/mimeapps.list` |
 | `config/wireplumber/wireplumber.conf.d/51-bluez.conf` | `~/.config/wireplumber/wireplumber.conf.d/51-bluez.conf` |
 | `config/pipewire/pipewire.conf.d/99-rnnoise.conf` | `~/.config/pipewire/pipewire.conf.d/99-rnnoise.conf` (RNNoise virtual mic over the RØDE NT-USB; needs `noise-suppression-for-voice`) |
-| `config/pipewire/pipewire.conf.d/10-min-quantum.conf` | `~/.config/pipewire/pipewire.conf.d/10-min-quantum.conf` (graph never below 1024 samples: at 256 apps underran under build load and the RØDE jack hissed; needs `rtkit` for PipeWire's realtime data loop) |
+| `config/pipewire/pipewire.conf.d/10-min-quantum.conf` | `~/.config/pipewire/pipewire.conf.d/10-min-quantum.conf` (graph never below 1024 samples: at 256 apps underran under build load and the RØDE jack hissed. No `rtkit`: under its 200 ms RLIMIT_RTTIME the kernel SIGKILLed pipewire twice under load on 2026-10-16) |
 | `config/systemd/user/restic-backup.{service,timer}` | `~/.config/systemd/user/restic-backup.{service,timer}` |
 | `config/systemd/user/tcc-snapshot.{service,path}` | `~/.config/systemd/user/tcc-snapshot.{service,path}` |
 | `config/systemd/user/{battery,disk}-watch.service` | `~/.config/systemd/user/{battery,disk}-watch.service` |
