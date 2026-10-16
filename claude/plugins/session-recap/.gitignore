@@ -1,0 +1,3 @@
+.claude-plugin/types/
+# written by Claude Code when it loads the mod, extending the types above
+tsconfig.json

@@ -2,6 +2,9 @@
   "attribution": {
     "sessionUrl": false
   },
+  "env": {
+    "CLAUDE_CODE_PLUGIN_DIRS": "~/git/kannar/nunux/claude/plugins/session-recap"
+  },
   "permissions": {
     "defaultMode": "auto"
   },
