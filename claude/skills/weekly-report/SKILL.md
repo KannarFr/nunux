@@ -24,21 +24,25 @@ If the user names only some people, still ask/confirm whether kannar is included
 Default: Monday → Friday of the current week (or since the day after the previous report's end
 if the user pastes it). State the dates in the header as `DD/MM–DD/MM`.
 
-**The previous weekend counts when there is material.** The last report ended on a Friday, so
-Saturday and Sunday before this Monday fall in no report unless this one picks them up. Check
-them first, for all four people:
+**The gap since the previous report counts when there is material.** The previous report is
+posted on Friday during the day, so Friday evening, Saturday and Sunday fall in no report unless
+this one picks them up. The gap starts when the previous report was posted: ask the user what
+time that was (in the same question as absences), and take 17:00 on its end date if they don't
+say. Check the gap first, for all four people:
 
 ```bash
-SAT=YYYY-MM-DD; MON=YYYY-MM-DD   # the Saturday before the period, and its Monday
-git log origin/main --since=$SAT --until=$MON -i --author=<match> --format='%ad %s' --date=short
-glab mr list --author=<user> --merged -F json -P 40 | jq -r --arg s $SAT --arg m $MON '.[] | select(.merged_at >= $s and .merged_at < $m) | "\(.iid) \(.merged_at[:10]) \(.title)"'
+CUT='YYYY-MM-DD HH:MM'; MON=YYYY-MM-DD   # previous report's end date + posting time, and this Monday
+git log origin/main --since="$CUT" --until=$MON -i --author=<match> --format='%ad %s' --date=format:'%F %R'
+# merged_at is UTC: convert CUT to UTC before comparing (Paris is UTC+2 in summer, +1 in winter)
+glab mr list --author=<user> --merged -F json -P 40 | jq -r --arg s "<CUT in UTC, as YYYY-MM-DDTHH:MM>" --arg m $MON '.[] | select(.merged_at >= $s and .merged_at < $m) | "\(.iid) \(.merged_at[:16]) \(.title)"'
 ```
 
-If anything comes back (a commit on main or a merged MR), start the period on that Saturday:
-use `SINCE=$SAT` for every query below and write the header from the Saturday
-(e.g. `semaine du 10/10–16/10`). Fold the weekend's items into the themes like any other — no
-separate « week-end » section. If nothing came back, keep Monday. When the user pasted the previous
-report, its end date decides instead: start the day after it, whatever weekday that is.
+If anything comes back (a commit on main or a merged MR), use `SINCE="$CUT"` for every query
+below instead of Monday, and start the header on the day after the previous report's end
+(e.g. previous report `05/10–09/10` → `semaine du 10/10–16/10`). Fold those items into the themes
+like any other — no separate « week-end » section. Drop anything the previous report already
+listed as done, when the user pasted it: it is the authority over the cut-off time. If nothing
+came back, keep Monday.
 
 ## Gather (run from the axo repo root)
 
