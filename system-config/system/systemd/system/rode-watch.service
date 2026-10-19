@@ -1,0 +1,20 @@
+[Unit]
+Description=Power-cycle the RODE NT-USB port when it is stuck in a reset loop
+# A system unit: switching a USB port's power off and on needs root.
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/home/kannar/git/kannar/nunux/bin/rode-watch
+Restart=always
+RestartSec=5
+ProtectHome=read-only
+ProtectSystem=strict
+PrivateTmp=yes
+NoNewPrivileges=yes
+# NB: no ProtectKernelTunables= -- it makes /sys read-only, and the whole job
+# is writing /sys/bus/usb/.../usbN-portM/disable.
+MemoryMax=32M
+
+[Install]
+WantedBy=multi-user.target

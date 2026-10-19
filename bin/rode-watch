@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# rode-watch — power-cycle the RØDE NT-USB's USB port when its firmware wedges.
+#
+# Seen 2026-10-19: after a burst of `usb_set_interface failed (-71)` the mic
+# stopped answering, and the kernel reset it every ~2s for minutes (each reset
+# drops the PipeWire card, so the headphones on its jack cut in and out). The
+# resets never help: only cutting power does, which until now meant a replug.
+# This laptop's xHCI root hub really switches port power (the mic's LED goes
+# dark on `echo 1 > .../usbN-portM/disable`), so do that instead.
+#
+# Trigger: RESETS kernel resets of the mic within WINDOW seconds. A healthy
+# mic logs none, so this cannot fire in normal use. The port is looked up from
+# the device's own `port` link, so the mic can sit in any port.
+#
+# Runs as a system unit: writing the port's `disable` file needs root.
+
+set -u
+
+VIDPID=19f7:0003   # RODE NT-USB
+RESETS=5
+WINDOW=30
+OFF=3              # seconds without power
+COOLDOWN=60        # after a cycle, let it re-enumerate before counting again
+MAX_PER_HOUR=3     # past that it is the cable or the port, not the firmware
+
+declare -a seen=() cycles=()
+quiet_until=0
+
+is_rode() {
+  local d=/sys/bus/usb/devices/$1
+  [[ -r $d/idVendor && "$(<"$d/idVendor"):$(<"$d/idProduct")" == "$VIDPID" ]]
+}
+
+power_cycle() {
+  local dev=$1 port
+  port=$(readlink -f "/sys/bus/usb/devices/$dev/port") || return 1
+  echo "<4>$dev: $RESETS resets in ${WINDOW}s, power-cycling ${port##*/}"
+  echo 1 > "$port/disable" || { echo "<3>cannot disable ${port##*/}"; return 1; }
+  sleep "$OFF"
+  echo 0 > "$port/disable" || { echo "<3>cannot re-enable ${port##*/}, replug the mic"; return 1; }
+}
+
+journalctl -k -f -n0 -o cat | while read -r line; do
+  [[ $line =~ ^usb\ ([0-9.-]+):\ reset\ .*USB\ device\ number ]] || continue
+  dev=${BASH_REMATCH[1]}
+  is_rode "$dev" || continue
+
+  now=$(date +%s)
+  (( now < quiet_until )) && continue
+
+  seen+=("$now")
+  recent=(); for t in "${seen[@]}"; do (( now - t < WINDOW )) && recent+=("$t"); done
+  seen=("${recent[@]}")
+  (( ${#seen[@]} < RESETS )) && continue
+
+  recent=(); for t in "${cycles[@]}"; do (( now - t < 3600 )) && recent+=("$t"); done
+  cycles=("${recent[@]}")
+  if (( ${#cycles[@]} >= MAX_PER_HOUR )); then
+    echo "<3>$dev: still resetting after $MAX_PER_HOUR power cycles this hour; check the cable or try another port"
+    quiet_until=$(( now + 3600 )); seen=()
+    continue
+  fi
+
+  power_cycle "$dev"
+  cycles+=("$now"); seen=()
+  quiet_until=$(( $(date +%s) + COOLDOWN ))
+done
