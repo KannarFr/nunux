@@ -176,13 +176,16 @@ exec_always kanshictl reload
     bindsym $mod+m exec handy --toggle-transcription
     bindsym $mod+Shift+m exec handy --cancel
 
-    # Friendly (AUR `friendly`, see pkglist-aur.txt): open a text box that records
-    # the mic itself (--stt handy: built-in dictation via `handy --transcribe-file`,
-    # no Handy overlay; pinned rather than -d/auto so a missing handy fails loudly
-    # instead of silently falling back to whisper). Enter stops and transcribes
-    # into the box, Enter again picks a tone, rewrites, and copies the result.
-    # Ctrl+Enter stops and submits, Esc cancels.
+    # Friendly (AUR `friendly`, see pkglist-aur.txt): open a text box with built-in
+    # dictation (--stt handy: `handy --transcribe-file`, no Handy overlay; pinned
+    # rather than -d/auto so a missing handy fails loudly instead of silently
+    # falling back to whisper). $mod+y opens it to type, Ctrl+R (or the Dictate
+    # button) records; $mod+Shift+y (-l) starts recording as it opens. While
+    # recording, Enter or Ctrl+R stops and transcribes into the box, Ctrl+Enter
+    # stops and submits. Enter picks a tone, rewrites, and copies the result.
+    # Esc cancels.
     bindsym $mod+y exec /usr/bin/friendly --stt handy
+    bindsym $mod+Shift+y exec /usr/bin/friendly --stt handy -l
 
     # dropdown (quake-style) terminal: ² toggles the scratchpad foot instance
     bindsym $mod+twosuperior [app_id="dropdown"] scratchpad show
