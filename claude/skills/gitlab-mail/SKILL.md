@@ -43,6 +43,8 @@ Keep **unread**:
 Everything else — a single product/module (`postgresql`, `cellar`,
 `product-mysql`, `kubernetes`, `billing`, `keycloak`, `faas-executor`,
 `docs(api)` for one service…) — is marked read, merged or not.
+Dependency bumps (`fix(deps)` / `chore(deps)` Renovate MRs, security ones
+included) are marked read too, even though they touch the whole workspace.
 
 ## If it fails
 
