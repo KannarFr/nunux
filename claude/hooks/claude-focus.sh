@@ -23,10 +23,12 @@ tree="$(timeout "$SWAY_PROBE_TIMEOUT" swaymsg -t get_tree 2>/dev/null)"
 state="" id="" con="" pane=""
 for f in $(ls -t "$dir"/claude-notify-*.id "$dir"/codex-notify-*.id 2>/dev/null); do
   { read -r fid; read -r fcon; read -r fpane; } < "$f"
-  [ -n "$fcon" ] || continue   # legacy 1-line file: no con to focus
-  # con_id still present in the live tree? (skips panes killed while waiting)
-  if printf '%s' "$tree" | jq -e --argjson c "$fcon" \
-       'any(.. | objects; .id? == $c)' >/dev/null 2>&1; then
+  # Still focusable? Either the pane still has a window (survives a terminal
+  # restart, which changes the con_id), or the recorded con_id is still in the
+  # live tree. Skips panes killed while waiting and legacy 1-line files.
+  if [ -n "$(pane_con "$fpane" "$tree")" ] || { [ -n "$fcon" ] &&
+       printf '%s' "$tree" | jq -e --argjson c "$fcon" \
+         'any(.. | objects; .id? == $c)' >/dev/null 2>&1; }; then
     state="$f" id="$fid" con="$fcon" pane="$fpane"
     break
   fi

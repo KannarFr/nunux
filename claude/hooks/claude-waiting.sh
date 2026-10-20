@@ -25,9 +25,8 @@ input="$(cat)"
 pane="${TMUX_PANE:-}"
 
 # --- find the Sway window that hosts this pane's tmux client ------------------
-# Walk from the tmux client's pid up the process tree; the first ancestor whose
-# pid appears in get_tree is the terminal-emulator window (works for any
-# terminal, not just one named binary). Fetch the tree once and reuse it.
+# pane_con (claude-focus-lib.sh) walks up from the tmux client's pid. Fetch the
+# tree once and reuse it for the focused check below.
 # $SWAYSOCK is inherited from the tmux server and goes stale across a sway
 # restart; ensure_swaysock re-derives it (or unsets it) so con is real.
 . "$(dirname "$(readlink -f "$0")")/claude-focus-lib.sh"
@@ -35,15 +34,8 @@ ensure_swaysock
 
 con=""
 if [ -n "$pane" ] && [ -n "${SWAYSOCK:-}" ]; then
-  client_pid="$(tmux display-message -p -t "$pane" '#{client_pid}' 2>/dev/null)"
   tree="$(timeout "$SWAY_PROBE_TIMEOUT" swaymsg -t get_tree 2>/dev/null)"
-  p="$client_pid"
-  while [ -n "$p" ] && [ "$p" != "1" ]; do
-    con="$(printf '%s' "$tree" | jq -r --argjson pid "$p" \
-      'first(.. | objects | select(.pid? == $pid) | .id) // empty')"
-    [ -n "$con" ] && break
-    p="$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')"
-  done
+  con="$(pane_con "$pane" "$tree")"
 
   # Already looking at this exact pane? Don't bother notifying. We skip only when
   # the host window is focused AND Claude's tmux pane is the active/visible one —

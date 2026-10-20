@@ -39,12 +39,36 @@ ensure_swaysock() {
   return 1
 }
 
-# focus_pane CON PANE — raise the sway window holding con_id CON, then select
-# tmux window+pane PANE. Each step is a silent no-op if its arg is empty or the
-# target is already gone.
+# pane_con PANE [TREE] — print the con_id of the sway window whose terminal
+# hosts tmux pane PANE's client. Walk from the client's pid up the process tree;
+# the first ancestor whose pid appears in get_tree is the terminal-emulator
+# window (works for any terminal, not just one named binary). Pass TREE to reuse
+# an already-fetched get_tree. Prints nothing if the pane has no client.
+pane_con() {
+  local pane="$1" tree="${2:-}" p con=""
+  [ -n "$pane" ] || return 0
+  [ -n "$tree" ] || tree="$(timeout "$SWAY_PROBE_TIMEOUT" swaymsg -t get_tree 2>/dev/null)"
+  p="$(tmux display-message -p -t "$pane" '#{client_pid}' 2>/dev/null)"
+  while [ -n "$p" ] && [ "$p" != "1" ]; do
+    con="$(printf '%s' "$tree" | jq -r --argjson pid "$p" \
+      'first(.. | objects | select(.pid? == $pid) | .id) // empty' 2>/dev/null)"
+    [ -n "$con" ] && break
+    p="$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')"
+  done
+  printf '%s' "$con"
+}
+
+# focus_pane CON PANE — raise the sway window hosting tmux pane PANE, then
+# select tmux window+pane PANE. The window is re-derived from the pane first:
+# the CON recorded when the notification fired dies with the terminal (close and
+# reopen it, and every pending notification points at a con_id that is gone),
+# while the tmux pane survives. CON is only the fallback. Each step is a silent
+# no-op if its target is empty or already gone.
 focus_pane() {
-  local con="$1" pane="$2"
+  local con="$1" pane="$2" live
   ensure_swaysock
+  live="$(pane_con "$pane")"
+  [ -n "$live" ] && con="$live"
   [ -n "$con" ] && timeout "$SWAY_PROBE_TIMEOUT" swaymsg "[con_id=$con] focus" >/dev/null 2>&1
   if [ -n "$pane" ]; then
     tmux select-window -t "$pane" >/dev/null 2>&1
