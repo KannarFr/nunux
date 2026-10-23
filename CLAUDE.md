@@ -45,11 +45,12 @@ Two repo regions: home dotfiles keep their bare names at the repo root, and ever
 | `claude/statusline.sh` | `~/.claude/statusline.sh` |
 | `claude/settings.json` | `~/.claude/settings.json` (user-level Claude Code config) |
 | `claude/WS1.md` | `~/.claude/WS1.md` (imported by the untracked `~/.claude/CLAUDE.md` via `@WS1.md`: tells every Claude session to offload agents and builds to the `ws1` VM through `bin/ws1`, and to fall back to the laptop when it is busy) |
-| `claude/HOSTS.md` | `~/.claude/HOSTS.md` (imported by `~/.claude/CLAUDE.md` via `@HOSTS.md`, like `WS1.md`: tells every Claude session what the home-LAN machines `ocean` and `pacific` are). `apply.sh` appends the `@WS1.md` and `@HOSTS.md` imports to `~/.claude/CLAUDE.md` when they are missing, so a rebuild cannot link these files and leave them unread |
 | `claude/commands/` | `~/.claude/commands` (user-defined slash commands) |
 | `claude/agents/` | `~/.claude/agents` (user-defined subagents) |
 | `claude/skills/gitlab-mail/` | `~/.claude/skills/gitlab-mail` (Thunderbird GitLab-mail triage skill + IMAP scripts) |
 | `claude/skills/can-i-close/` | `~/.claude/skills/can-i-close` (end-of-session check: answers "can I close this session?" from evidence — pending agents, leftover processes and worktrees, git vs remote, what production serves) |
+
+**Not here: `HOSTS.md` and everything beyond this laptop.** The machines file (ocean, pacific, the home LAN) and the general advisor for other repos, the farm, admin and local mandates live in the private `~/git/kannar/kannar` repo. Its own `apply.sh` links its `HOSTS.md` to `~/.claude/HOSTS.md` and adds the `@HOSTS.md` import. This repo is public, so nothing from there gets copied here.
 
 Snapshots / not symlinked (read-only references; do not assume edits here propagate):
 

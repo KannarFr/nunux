@@ -13,7 +13,7 @@ There is no build, no test, no lint. Most changes are one-line tweaks.
 |---|---|
 | repo root | home dotfiles under their bare names — `bashrc`, `zshrc`, `vimrc`, `gitconfig`, `tmux`, `bat`, … |
 | `config/` | everything bound to `~/.config`, mirroring the destination path — `config/sway/config`, `config/swaylock/config`, `config/waybar/`, `config/starship.toml`, … |
-| `claude/` | user-level Claude Code config → `~/.claude` (`settings.json`, `statusline.sh`, `commands/`, `agents/`, `hooks/`, and the instruction files `WS1.md` and `HOSTS.md`, which `apply.sh` imports from the untracked `~/.claude/CLAUDE.md`) |
+| `claude/` | user-level Claude Code config → `~/.claude` (`settings.json`, `statusline.sh`, `commands/`, `agents/`, `hooks/`, and the instruction file `WS1.md`, which `apply.sh` imports from the untracked `~/.claude/CLAUDE.md`; `HOSTS.md` moved to the private `kannar` repo) |
 | `mail/` | the mail archive: Python behind `bin/mail-archive` and `bin/mail-search` (see [`mail/README.md`](mail/README.md)) |
 | `bin/` | helper scripts (`osd`, `battery-watch`, `disk-watch`, `bt-watch`, `powermenu`, `restic-backup`, `migrate-home`, `pkglist-refresh`, …) called by absolute path (sway config, systemd units, pacman hook) — not symlinked, not on `$PATH` |
 | `system-config/`, `paludis-config/`, `kernelconfig`, `doc/` | read-only snapshots / notes — **not** symlinked; edits here do not propagate |

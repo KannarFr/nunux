@@ -68,7 +68,6 @@ MAP=(
   "claude/statusline.sh    $HOME/.claude/statusline.sh"
   "claude/settings.json    $HOME/.claude/settings.json"
   "claude/WS1.md           $HOME/.claude/WS1.md"
-  "claude/HOSTS.md         $HOME/.claude/HOSTS.md"
   "claude/commands         $HOME/.claude/commands"
   "claude/agents           $HOME/.claude/agents"
   "claude/hooks            $HOME/.claude/hooks"
@@ -172,7 +171,7 @@ done
 # ~/.claude/CLAUDE.md is untracked (it also holds machine-local imports), but
 # the instruction files linked above only take effect if it imports them.
 # Append any missing import; never rewrite the file.
-for f in WS1.md HOSTS.md; do
+for f in WS1.md; do
   if grep -qxF "@$f" "$HOME/.claude/CLAUDE.md" 2>/dev/null; then
     printf '  ok    ~/.claude/CLAUDE.md imports %s\n' "$f"
   else
