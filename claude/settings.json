@@ -6,7 +6,11 @@
     "CLAUDE_CODE_PLUGIN_DIRS": "~/git/kannar/nunux/claude/plugins/session-recap"
   },
   "permissions": {
-    "defaultMode": "auto"
+    "defaultMode": "auto",
+    "allow": [
+      "Bash(glab mr approve *)",
+      "Bash(rtk glab mr approve *)"
+    ]
   },
   "hooks": {
     "Notification": [
@@ -86,10 +90,11 @@
   "autoMode": {
     "allow": [
       "$defaults",
+      "Approving a GitLab merge request with `glab mr approve <iid> --sha <sha>` is allowed, including self-approval of the user's own MRs: the user asked Claude to auto-approve instead of asking each time.",
       "Bash(adb reverse:*) in /home/kannar/git/myle/mobile — routine port-forward re-apply per the mobile CLAUDE.md",
-      "Bash(npx eas-cli whoami) in /home/kannar/git/myle/mobile — routine auth check before builds",
+      "Bash(clever activity:*) — read-only deployment history, changes nothing",
       "Bash(clever status:*) — read-only app state (running/scaling/deployed commit), changes nothing",
-      "Bash(clever activity:*) — read-only deployment history, changes nothing"
+      "Bash(npx eas-cli whoami) in /home/kannar/git/myle/mobile — routine auth check before builds"
     ],
     "soft_deny": [
       "$defaults",
