@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# compute-load — how busy the three compute machines are, as one line written to a cache that
+# claude/statusline.sh reads (the status line never runs ssh itself):
+#
+#   ws1=61/3 ocean=3/0 lagoon=15/7  load % / work, per machine
+#   ws1= ocean= lagoon=15/7         an empty value = unreachable (away from home, VM down…)
+#
+# load % : 1-minute load average / cores, in % (may exceed 100).
+# work   : ws1 and ocean — active work sites: distinct git working trees under /home/kannar where at
+#          least one of kannar's processes runs (a `ws1 run` agent, a `ws1 exec` or `ocean-run exec`
+#          build launched by any Claude session, a session there). An idle shell left in a tree counts.
+#          lagoon — Claude Code sessions here (a `…/claude` process attached to a terminal: not the
+#          daemon, its pty hosts or the Chrome native host), plus their background subagents, which
+#          live inside the session's process: counted by their task transcript (tasks/a<16 hex>.output
+#          under /tmp/claude-<uid>), written to in the last 2 minutes.
+#
+# The three probes run in parallel, each bounded to a few seconds. The statusline starts this in the
+# background when the cache is older than 30 s, guarded by a lock directory.
+set -u
+
+cache="${XDG_CACHE_HOME:-$HOME/.cache}/compute-load"
+lock="$cache.lock"
+trap 'rmdir "$lock" 2>/dev/null' EXIT
+
+# Snippets run on each machine through `bash -s` (and locally through `bash -c`).
+LOAD='printf "%s %s " "$(cut -d" " -f1 /proc/loadavg)" "$(nproc)"'
+
+# Active work sites; root on ws1 reads kannar's trees, hence safe.directory.
+SITES='for p in $(pgrep -u kannar); do readlink "/proc/$p/cwd"; done 2>/dev/null | sort -u |
+	while read -r d; do
+		case $d in /home/kannar/*) git -c safe.directory="*" -C "$d" rev-parse --show-toplevel 2>/dev/null ;; esac
+	done | sort -u | grep -cvx /home/kannar'
+
+# Claude Code sessions: field 7 of /proc/<pid>/stat is the controlling terminal, 0 when there is none.
+SESSIONS='n=0
+for p in $(pgrep -u "$(id -u)" -f "^/[^ ]*/claude( |\$)"); do
+	[ "$(cut -d" " -f7 "/proc/$p/stat" 2>/dev/null)" != 0 ] && n=$((n + 1))
+done
+echo "$n"'
+
+# "<load> <cores> <work>" -> "<pct>/<work>"
+fmt() { awk 'NF >= 3 && $2 > 0 { printf "%d/%d", $1 * 100 / $2, $3 }'; }
+
+probe() {
+	printf '%s\n%s\n' "$LOAD" "$SITES" |
+		timeout 6 ssh -o ConnectTimeout=3 -o BatchMode=yes "$1" bash -s 2>/dev/null | tr '\n' ' ' | fmt
+}
+
+tmp=$(mktemp)
+probe ws1 >"$tmp.ws1" & # the ws1 alias logs in as root
+probe ocean >"$tmp.ocean" &
+subagents=$(find "/tmp/claude-$(id -u)" -path '*/tasks/*' -name 'a*.output' -mmin -2 2>/dev/null |
+	grep -cE '/a[0-9a-f]{16}\.output$')
+echo "$(bash -c "$LOAD") $(($(bash -c "$SESSIONS") + subagents))" | fmt >"$tmp.lagoon"
+wait
+
+mkdir -p "$(dirname "$cache")"
+printf 'ws1=%s ocean=%s lagoon=%s\n' "$(cat "$tmp.ws1")" "$(cat "$tmp.ocean")" "$(cat "$tmp.lagoon")" >"$tmp"
+mv "$tmp" "$cache"
+rm -f "$tmp.ws1" "$tmp.ocean" "$tmp.lagoon"

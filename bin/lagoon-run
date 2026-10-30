@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# lagoon-run '<command>' — run a build or a test suite on lagoon (this laptop: 24 cores, 124G) capped at
+# 30 % of its CPU and 32G of RAM, at low priority: it has frozen under unbounded load before, and it is
+# also the machine the user is working on. See claude/WS1.md.
+set -euo pipefail
+[[ $# -gt 0 ]] || { sed -n '2,4p' "$0"; exit 2; }
+exec systemd-run --user --scope --quiet -p CPUQuota=720% -p MemoryMax=32G nice -n 10 bash -c "$*"

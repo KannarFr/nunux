@@ -24,8 +24,8 @@ case "$tool" in
 	Bash)
 		cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // ""')
 		[[ "$cmd" == *WS1_LOCAL=1* ]] && exit 0
-		# Already going there.
-		[[ "$cmd" =~ (bin/ws1|ssh[[:space:]]+(-[^[:space:]]+[[:space:]]+)*(kannar@)?ws1) ]] && exit 0
+		# Already going there, or to ocean (the second machine, capped by bin/ocean-run).
+		[[ "$cmd" =~ (bin/ws1|bin/ocean-run|ssh[[:space:]]+(-[^[:space:]]+[[:space:]]+)*(kannar@)?ws1) ]] && exit 0
 		heavy='(^|[;&|(`[:space:]])(cargo[[:space:]]+(build|b|test|t|check|c|clippy|bench|nextest|run|r|doc|install)|sbt|mvn|gradle|\./gradlew|docker[[:space:]]+(build|buildx|compose|run)|(npm|pnpm|yarn)[[:space:]]+(run[[:space:]]+)?(build|test)|make|ninja|pytest|go[[:space:]]+(build|test))([[:space:]]|$)'
 		[[ "$cmd" =~ $heavy ]] || exit 0
 		what="this command"

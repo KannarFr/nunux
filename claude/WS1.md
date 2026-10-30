@@ -1,17 +1,30 @@
-# ws1: remote compute for this laptop
+# Compute: ws1 first, then ocean (80 %), then lagoon (30 %)
 
-`ws1` is a Clever Cloud workstation VM (32 cores, 62G RAM, ~460G encrypted home), reachable as `ssh ws1` (root) or `ssh kannar@ws1`. This laptop is the weak machine: it has frozen under load before. So the session on the laptop stays the advisor (talking to the user, planning, reading, small edits, reviewing results) and heavy work goes to ws1.
+Three machines can do heavy work. The session on the laptop stays the advisor (talking to the user, planning, reading, small edits, reviewing results); builds, test suites and writing subagents go elsewhere, in this order:
 
-The helper is `/home/kannar/git/kannar/nunux/bin/ws1` (not on `$PATH`, call it by absolute path). Run it with no argument for the full usage. Everything it starts runs as the unprivileged user `kannar`.
+| Machine | What | Share the user allows | How |
+|---|---|---|---|
+| `ws1` | Clever Cloud workstation VM: 32 cores, 62G RAM, ~460G encrypted home; `ssh ws1` (root) or `ssh kannar@ws1` | all of it | `bin/ws1` (below) |
+| `ocean` | the user's home desktop (see HOSTS.md): 16 cores, 31G; it also runs production services (the private HOSTS.md says which) | **80 %** of CPU, 16G, low priority | `bin/ocean-run` |
+| `lagoon` | this laptop: 24 cores, 124G; it has frozen under unbounded load before, and the user works on it | **30 %** of CPU, 32G, low priority | `bin/lagoon-run` |
+
+The helpers are in `/home/kannar/git/kannar/nunux/bin/` (not on `$PATH`, call them by absolute path). The status line shows each machine's load (1-minute load average / cores) next to its allowance, from a cache that `bin/compute-load` refreshes every 30 s: `ws1 61% (3) ocean 3% lagoon 15% (2)` (load, then the work in progress when there is any: active work sites on ws1 and ocean, Claude sessions + subagents on lagoon), colored against the allowance; an unreachable machine is struck through, without figures.
 
 ## Rule
 
 Before launching a subagent, a build, a test suite or anything else that will keep cores busy for more than a minute or so, run `ws1 load`.
 
 - **`free` (exit 0): run it on ws1.**
-- **`busy` (exit 1) or unreachable (exit 2): run it on the laptop** as usual, and say so in one line.
+- **`busy` (exit 1) or unreachable (exit 2): use ocean** if it answers (it is only reachable on the home network or through the home VPN, see HOSTS.md), **else lagoon**, always through their capped helper, never an unbounded command; say in one line where it went and why. Several jobs can be spread over the three at once (the user did that on 2026-10-30).
+- Never run an uncapped heavy command on lagoon, and never exceed ocean's cap: it would slow the production services it runs.
 
-A PreToolUse hook (`~/.claude/hooks/ws1-offload.sh`) enforces this in git repos: while ws1 is free it refuses heavy Bash commands (cargo build/test, sbt, docker build, make…) and subagents other than Explore/Plan, saying how to run them on ws1. When the work truly needs the laptop (a phone on adb, a local-only service, the Mac build slave), retry with `WS1_LOCAL=1` in the command or `[ws1:local]` in the agent prompt, and say why.
+## ocean and lagoon
+
+- `ocean-run sync` copies the current git tree (tracked + untracked-but-not-ignored files, tar over ssh: lagoon has no rsync, so files deleted here stay there) to the same path under `~` on ocean; `ocean-run exec '<cmd>'` syncs, then runs the command there in the same subdirectory inside `systemd-run --user --scope -p CPUQuota=1280% -p MemoryMax=16G nice -n 10`, with Java 21 forced (ocean's default JDK 27 is too new for sbt/Play). Docker works there (testcontainers): never touch the containers already running there (HOSTS.md lists them) and never restart docker.
+- `lagoon-run '<cmd>'` runs the command here inside `systemd-run --user --scope -p CPUQuota=720% -p MemoryMax=32G nice -n 10`. The PreToolUse hook still refuses heavy commands while ws1 is free: add `WS1_LOCAL=1` to the command when lagoon is deliberately chosen.
+- Claude Code is installed on ocean but **not logged in** (as of 2026-10-30), so there is no `ws1 run` equivalent there: a subagent that needs ocean runs here (it is cheap: API calls, reads and edits) and sends every build and test through `ocean-run exec`. Give it `[ws1:local]` in its prompt and the helper's path in its brief. Logging in needs a real terminal: the user runs `ssh -t ocean`, then `claude`, then `/login`.
+
+A PreToolUse hook (`~/.claude/hooks/ws1-offload.sh`) enforces this in git repos: while ws1 is free it refuses heavy Bash commands (cargo build/test, sbt, docker build, make…) and subagents other than Explore/Plan, saying how to run them on ws1 (a command through `bin/ocean-run` is let through: it already leaves the laptop). When the work truly needs the laptop (a phone on adb, a local-only service, the Mac build slave), retry with `WS1_LOCAL=1` in the command or `[ws1:local]` in the agent prompt, and say why.
 
 Cheap work stays local without checking: searches, reading files, short commands, and agents that only read (Explore, Plan). The point is to move CPU and RAM, not every tool call.
 

@@ -80,6 +80,49 @@ if [ -n "$WEEK_PCT" ]; then
   [ -n "$WEEK_RESET_FMT" ] && USAGE_SEG+=$(printf '%s (resets in %s)%s' "$DIM" "$WEEK_RESET_FMT" "$RESET")
 fi
 
+# How busy the compute machines are (claude/WS1.md: ws1 first, ocean up to 80 %, lagoon up to 30 %).
+# Read from a cache that bin/compute-load refreshes in the background every 30 s at most: the status
+# line itself never waits on ssh. A machine that did not answer shows "—".
+LOAD_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/compute-load"
+LOAD_LOCK="$LOAD_CACHE.lock"
+now=$(date +%s)
+cache_age=$(( now - $(stat -c %Y "$LOAD_CACHE" 2>/dev/null || echo 0) ))
+if [ "$cache_age" -gt 30 ]; then
+  # A lock older than a minute is a probe that died: take it over.
+  if [ -d "$LOAD_LOCK" ] && [ $(( now - $(stat -c %Y "$LOAD_LOCK") )) -gt 60 ]; then rmdir "$LOAD_LOCK"; fi
+  if mkdir "$LOAD_LOCK" 2>/dev/null; then
+    setsid -f /home/kannar/git/kannar/nunux/bin/compute-load >/dev/null 2>&1 </dev/null
+  fi
+fi
+# color against the machine's allowance: under 60 % of it green, under it yellow, over it red
+cap_color() {
+  local pct="$1" cap="$2"
+  if   [ "$pct" -lt $(( cap * 60 / 100 )) ]; then echo "$GREEN"
+  elif [ "$pct" -lt "$cap" ];                then echo "$YELLOW"
+  else                                            echo "$RED"
+  fi
+}
+STRIKE=$'\033[9m'
+LOAD_SEG=""
+if [ -r "$LOAD_CACHE" ]; then
+  # each entry is host=<load %>/<work>, or host= when it did not answer (bin/compute-load says what
+  # "work" counts per machine: active work sites on ws1 and ocean, sessions + subagents on lagoon)
+  for spec in ws1:100 ocean:80 lagoon:30; do
+    host=${spec%%:*}; cap=${spec##*:}
+    val=$(sed -n "s/.*\b$host=\([0-9]*\/[0-9]*\).*/\1/p" "$LOAD_CACHE")
+    if [ -n "$val" ]; then
+      pct=${val%/*}; work=${val#*/}
+      LOAD_SEG+=$(printf ' %s %s%s%%%s' "$host" "$(cap_color "$pct" "$cap")" "$pct" "$RESET")
+      [ "$work" -gt 0 ] && LOAD_SEG+=$(printf ' %s(%s)%s' "$DIM" "$work" "$RESET")
+    else
+      # unreachable: the name struck through, no figures
+      LOAD_SEG+=$(printf ' %s%s%s%s' "$DIM" "$STRIKE" "$host" "$RESET")
+    fi
+  done
+  LOAD_SEG=$(printf ' %s|%s%s' "$DIM" "$RESET" "$LOAD_SEG")
+fi
+USAGE_SEG+="$LOAD_SEG"
+
 printf '%s[%s]%s %s%s%s %s@%s %s%s%s %s|%s %s%s%s %s|%s ctx %s[%s%s%s%s]%s %s%s%%%s%s' \
   "$CYAN"    "$MODEL"   "$RESET" \
   "$GREEN"   "$PROJECT" "$RESET" \

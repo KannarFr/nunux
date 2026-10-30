@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# ocean-run — run the heavy part of a git worktree's work (builds, test suites) on ocean, the home
+# desktop (16 cores, 31G), capped at 80 % of its CPU and 16G of RAM, at low priority: ocean also
+# runs production services (see the private HOSTS.md). See claude/WS1.md.
+#
+#   ocean-run sync              copy the current git tree (tracked + untracked-but-not-ignored files)
+#                               to ocean:~/<same path relative to $HOME>
+#   ocean-run exec '<command>'  sync, then run the command there, in the same subdirectory
+#
+# Java 21 is forced: ocean's default JDK (27) is too new for sbt/Play.
+# The copy is tar over ssh (no rsync on lagoon): files deleted here stay there.
+set -euo pipefail
+
+top=$(git rev-parse --show-toplevel)
+sub=$(git rev-parse --show-prefix)
+remote=${top#"$HOME"/}
+[[ "$remote" == "$top" ]] && { echo "ocean-run: $top is not under \$HOME" >&2; exit 2; }
+
+sync() {
+	ssh ocean "mkdir -p ~/$(printf %q "$remote")"
+	(cd "$top" && git ls-files -co --exclude-standard -z | tar --null -T - -czf - 2>/dev/null) |
+		ssh ocean "tar -xzf - -C ~/$(printf %q "$remote")"
+}
+
+case "${1:-}" in
+	sync) sync ;;
+	exec)
+		shift
+		sync
+		jdk=/usr/lib/jvm/java-21-openjdk
+		ssh ocean "cd ~/$(printf %q "$remote/$sub") && export JAVA_HOME=$jdk PATH=$jdk/bin:\$PATH && \
+			systemd-run --user --scope --quiet -p CPUQuota=1280% -p MemoryMax=16G nice -n 10 bash -c $(printf %q "$*")"
+		;;
+	*) sed -n '2,11p' "$0"; exit 2 ;;
+esac
