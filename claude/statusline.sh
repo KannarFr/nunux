@@ -146,4 +146,4 @@ printf '%s[%s]%s %s%s%s %s@%s %s%s%s %s|%s %s%s%s %s|%s ctx %s[%s%s%s%s]%s %s%s%
   "$CTX_COLOR" "$BAR" "$RESET" "$DIM" "$DOTS" "$RESET" \
   "$CTX_COLOR" "$CTX" "$RESET" \
   "$USAGE_SEG"
-[ -n "$RECAP" ] && printf '\n%s↺ %s%s' "$DIM" "$RECAP" "$RESET"
+if [ -n "$RECAP" ]; then printf '\n%s↺ %s%s' "$DIM" "$RECAP" "$RESET"; fi
