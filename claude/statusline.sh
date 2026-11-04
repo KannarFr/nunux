@@ -1,6 +1,7 @@
 #!/bin/bash
 input=$(cat)
 
+SESSION_ID=$(echo "$input" | jq -r '.session_id // empty')
 MODEL=$(echo "$input" | jq -r '.model.display_name // "?"')
 DIR=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // "."')
 COST=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
@@ -123,6 +124,17 @@ if [ -r "$LOAD_CACHE" ]; then
 fi
 USAGE_SEG+="$LOAD_SEG"
 
+# The session recap, kept up to date by the session-recap mod (claude/plugins/session-recap), on a
+# second line. Recaps of sessions untouched for a week are swept away.
+RECAP_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/session-recap"
+RECAP=""
+if [ -n "$SESSION_ID" ] && [ -s "$RECAP_DIR/$SESSION_ID" ]; then
+  RECAP=$(head -n1 "$RECAP_DIR/$SESSION_ID")
+fi
+if [ "$cache_age" -gt 30 ] && [ -d "$RECAP_DIR" ]; then
+  find "$RECAP_DIR" -type f -mtime +7 -delete 2>/dev/null
+fi
+
 printf '%s[%s]%s %s%s%s %s@%s %s%s%s %s|%s %s%s%s %s|%s ctx %s[%s%s%s%s]%s %s%s%%%s%s' \
   "$CYAN"    "$MODEL"   "$RESET" \
   "$GREEN"   "$PROJECT" "$RESET" \
@@ -134,3 +146,4 @@ printf '%s[%s]%s %s%s%s %s@%s %s%s%s %s|%s %s%s%s %s|%s ctx %s[%s%s%s%s]%s %s%s%
   "$CTX_COLOR" "$BAR" "$RESET" "$DIM" "$DOTS" "$RESET" \
   "$CTX_COLOR" "$CTX" "$RESET" \
   "$USAGE_SEG"
+[ -n "$RECAP" ] && printf '\n%s↺ %s%s' "$DIM" "$RECAP" "$RESET"

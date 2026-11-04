@@ -21,6 +21,18 @@ let generation = 0
 let isInteractive = false
 let lastPrompt = ''
 
+// The recap is drawn by the status line (claude/statusline.sh), which reads it from
+// <cache>/session-recap/<session id>: a stale recap (refresh in flight) ends with " …".
+async function recapFile($: EngineInterface) {
+  const cache = (await $.env.get('XDG_CACHE_HOME')) || `${await $.env.get('HOME')}/.cache`
+  return `${cache}/session-recap/${await $.session.id()}`
+}
+
+async function publish($: EngineInterface) {
+  const r = await read($, recap)
+  await $.fs.write(await recapFile($), r ? `${r.text}${r.isStale ? ' …' : ''}\n` : '')
+}
+
 const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n)}…` : s)
 
 // The model sometimes adds a lead-in line; the recap is the last non-empty one.
@@ -33,6 +45,7 @@ async function refresh($: EngineInterface, answer: string) {
   const mine = ++generation
   const previous = await read($, recap)
   await update($, recap, r => (r ? { ...r, isStale: true } : r))
+  await publish($)
   const reply = await $.model.complete({
     model: MODEL,
     system: SYSTEM,
@@ -46,6 +59,7 @@ async function refresh($: EngineInterface, answer: string) {
   const text = reply.isAnswered ? lastLine(reply.text) : ''
   // An empty or failed reply keeps the previous recap rather than blanking the band.
   await update($, recap, r => (text !== '' ? { text, isStale: false } : r ? { ...r, isStale: false } : r))
+  await publish($)
 }
 
 export const register: Register = on => {
@@ -74,19 +88,5 @@ export const register: Register = on => {
       void refresh($, e.answer)
     }
     return result
-  })
-
-  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    const r = await read($, recap)
-    if (e.props.hasSurvey || r === null) return next(e)
-
-    const { Box, Text } = $.ui.resolve(e)
-    return (
-      <Box>
-        <Text dimColor wrap="truncate-end">
-          ↺ {r.text}{r.isStale ? ' …' : ''}
-        </Text>
-      </Box>
-    )
   })
 }

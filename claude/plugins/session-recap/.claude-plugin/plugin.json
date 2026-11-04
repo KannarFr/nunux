@@ -1,1 +1,1 @@
-{ "name": "session-recap", "version": "0.1.0", "description": "Always shows a one-line recap of the session above the prompt, refreshed after each turn", "types": "./types/index.d.ts" }
+{ "name": "session-recap", "version": "0.1.0", "description": "Keeps a one-line recap of the session, refreshed after each turn, for the status line to show", "types": "./types/index.d.ts" }
