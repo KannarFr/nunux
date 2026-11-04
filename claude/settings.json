@@ -1,17 +1,18 @@
 {
-  "attribution": {
-    "sessionUrl": false
-  },
   "env": {
     "CLAUDE_CODE_PLUGIN_DIRS": "~/git/kannar/nunux/claude/plugins/session-recap"
   },
+  "attribution": {
+    "sessionUrl": false
+  },
   "permissions": {
-    "defaultMode": "auto",
     "allow": [
       "Bash(glab mr approve *)",
       "Bash(rtk glab mr approve *)"
-    ]
+    ],
+    "defaultMode": "auto"
   },
+  "model": "opus",
   "hooks": {
     "Notification": [
       {
@@ -72,7 +73,9 @@
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true,
     "stripe@claude-plugins-official": true,
-    "rust-analyzer-lsp@claude-plugins-official": true
+    "rust-analyzer-lsp@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
+    "context7@claude-plugins-official": true
   },
   "modelSettings": {
     "claude-opus-5": {
@@ -113,6 +116,5 @@
       "**Org-specific CLIs**: rtk (token-saving proxy, routine), clever, glab, gh, npx eas-cli, adb, bin/ws1 (offload to the ws1 VM)."
     ]
   },
-  "voiceEnabled": true,
-  "model": "opus"
+  "voiceEnabled": true
 }
