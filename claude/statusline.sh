@@ -11,7 +11,17 @@ FIVEH_RESET=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // empty')
 WEEK_PCT=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty' | cut -d. -f1)
 WEEK_RESET=$(echo "$input" | jq -r '.rate_limits.seven_day.resets_at // empty')
 
-PROJECT=$(basename "$DIR")
+# The folder the session was launched in (workspace.project_dir), with ~ for $HOME; when the session
+# has since moved, the current folder follows it, relative to the launch folder when inside it.
+LAUNCH=$(echo "$input" | jq -r '.workspace.project_dir // empty')
+[ -z "$LAUNCH" ] && LAUNCH=$DIR
+PROJECT=${LAUNCH/#$HOME/\~}
+if [ "$DIR" != "$LAUNCH" ]; then
+  case "$DIR" in
+    "$LAUNCH"/*) PROJECT+=" → ${DIR#"$LAUNCH"/}" ;;
+    *)           PROJECT+=" → ${DIR/#$HOME/\~}" ;;
+  esac
+fi
 
 BRANCH=$(git -C "$DIR" symbolic-ref --short HEAD 2>/dev/null \
   || git -C "$DIR" rev-parse --short HEAD 2>/dev/null \
