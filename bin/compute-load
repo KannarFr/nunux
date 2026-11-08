@@ -15,12 +15,12 @@
 #          under /tmp/claude-<uid>), written to in the last 2 minutes.
 #
 # The three probes run in parallel, each bounded to a few seconds. The statusline starts this in the
-# background when the cache is older than 30 s, guarded by a lock directory.
+# background when the cache is older than 20 s, under `flock -n compute-load.flock` (one run at a time);
+# its 30 s refreshInterval (claude/settings.json) means this runs about every 30 s while any Claude
+# session is open, idle or not.
 set -u
 
 cache="${XDG_CACHE_HOME:-$HOME/.cache}/compute-load"
-lock="$cache.lock"
-trap 'rmdir "$lock" 2>/dev/null' EXIT
 
 # Snippets run on each machine through `bash -s` (and locally through `bash -c`).
 LOAD='printf "%s %s " "$(cut -d" " -f1 /proc/loadavg)" "$(nproc)"'

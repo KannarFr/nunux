@@ -1,19 +1,18 @@
 #!/bin/bash
 input=$(cat)
 
-SESSION_ID=$(echo "$input" | jq -r '.session_id // empty')
-MODEL=$(echo "$input" | jq -r '.model.display_name // "?"')
-DIR=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // "."')
-COST=$(echo "$input" | jq -r '.cost.total_cost_usd // 0')
-CTX=$(echo "$input" | jq -r '.context_window.used_percentage // 0' | cut -d. -f1)
-FIVEH_PCT=$(echo "$input" | jq -r '.rate_limits.five_hour.used_percentage // empty' | cut -d. -f1)
-FIVEH_RESET=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // empty')
-WEEK_PCT=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty' | cut -d. -f1)
-WEEK_RESET=$(echo "$input" | jq -r '.rate_limits.seven_day.resets_at // empty')
+# Every field in one jq call (the status line runs every 30 s in every session, see settings.json),
+# joined by the unit separator: a tab would collapse empty fields under `read`.
+IFS=$'\x1f' read -r SESSION_ID MODEL DIR COST CTX FIVEH_PCT FIVEH_RESET WEEK_PCT WEEK_RESET LAUNCH < <(
+  jq -r 'def pct: if . == null then "" else floor end;
+    [ .session_id // "", .model.display_name // "?", .workspace.current_dir // .cwd // ".",
+      .cost.total_cost_usd // 0, (.context_window.used_percentage // 0 | floor),
+      (.rate_limits.five_hour.used_percentage | pct), .rate_limits.five_hour.resets_at // "",
+      (.rate_limits.seven_day.used_percentage | pct), .rate_limits.seven_day.resets_at // "",
+      .workspace.project_dir // "" ] | map(tostring) | join("\u001f")' <<<"$input")
 
 # The folder the session was launched in (workspace.project_dir), with ~ for $HOME; when the session
 # has since moved, the current folder follows it, relative to the launch folder when inside it.
-LAUNCH=$(echo "$input" | jq -r '.workspace.project_dir // empty')
 [ -z "$LAUNCH" ] && LAUNCH=$DIR
 PROJECT=${LAUNCH/#$HOME/\~}
 if [ "$DIR" != "$LAUNCH" ]; then
@@ -92,18 +91,15 @@ if [ -n "$WEEK_PCT" ]; then
 fi
 
 # How busy the compute machines are (claude/WS1.md: ws1 first, ocean up to 80 %, lagoon up to 30 %).
-# Read from a cache that bin/compute-load refreshes in the background every 30 s at most: the status
-# line itself never waits on ssh. A machine that did not answer shows "—".
+# Read from a cache that bin/compute-load refreshes in the background when it is older than 20 s
+# (under settings.json's 30 s refreshInterval, so each tick finds it stale): the status line itself
+# never waits on ssh. A machine that did not answer is struck through. One probe at a time: flock -n
+# skips the run while another holds the lock, and the kernel drops it if the probe dies.
 LOAD_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/compute-load"
-LOAD_LOCK="$LOAD_CACHE.lock"
 now=$(date +%s)
 cache_age=$(( now - $(stat -c %Y "$LOAD_CACHE" 2>/dev/null || echo 0) ))
-if [ "$cache_age" -gt 30 ]; then
-  # A lock older than a minute is a probe that died: take it over.
-  if [ -d "$LOAD_LOCK" ] && [ $(( now - $(stat -c %Y "$LOAD_LOCK") )) -gt 60 ]; then rmdir "$LOAD_LOCK"; fi
-  if mkdir "$LOAD_LOCK" 2>/dev/null; then
-    setsid -f /home/kannar/git/kannar/nunux/bin/compute-load >/dev/null 2>&1 </dev/null
-  fi
+if [ "$cache_age" -gt 20 ]; then
+  setsid -f flock -n "$LOAD_CACHE.flock" /home/kannar/git/kannar/nunux/bin/compute-load >/dev/null 2>&1 </dev/null
 fi
 # color against the machine's allowance: under 60 % of it green, under it yellow, over it red
 cap_color() {
@@ -141,7 +137,9 @@ RECAP=""
 if [ -n "$SESSION_ID" ] && [ -s "$RECAP_DIR/$SESSION_ID" ]; then
   RECAP=$(head -n1 "$RECAP_DIR/$SESSION_ID")
 fi
-if [ "$cache_age" -gt 30 ] && [ -d "$RECAP_DIR" ]; then
+# The sweep runs once a day, stamped by $RECAP_DIR.swept.
+if [ -d "$RECAP_DIR" ] && [ $(( now - $(stat -c %Y "$RECAP_DIR.swept" 2>/dev/null || echo 0) )) -gt 86400 ]; then
+  touch "$RECAP_DIR.swept"
   find "$RECAP_DIR" -type f -mtime +7 -delete 2>/dev/null
 fi
 
