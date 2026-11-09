@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# compute-load — how busy the three compute machines are, as one line written to a cache that
+# compute-load — how busy the compute machines are, as one line written to a cache that
 # claude/statusline.sh reads (the status line never runs ssh itself):
 #
-#   ws1=61/3 ocean=3/0 lagoon=15/7  load % / work, per machine
-#   ws1= ocean= lagoon=15/7         an empty value = unreachable (away from home, VM down…)
+#   ws1=61/3 ocean=3/0 lagoon=15/7 pacific=26/0  load % / work, per machine
+#   ws1= ocean= lagoon=15/7 pacific=              an empty value = unreachable (away from home, VM down…)
 #
 # load % : 1-minute load average / cores, in % (may exceed 100).
 # work   : ws1 and ocean — active work sites: distinct git working trees under /home/kannar where at
@@ -13,8 +13,10 @@
 #          daemon, its pty hosts or the Chrome native host), plus their background subagents, which
 #          live inside the session's process: counted by their task transcript (tasks/a<16 hex>.output
 #          under /tmp/claude-<uid>), written to in the last 2 minutes.
+#          pacific (the Mac mini, iOS builds; not an offload target, see HOSTS.md) — running xcodebuild
+#          processes, i.e. iOS builds in progress.
 #
-# The three probes run in parallel, each bounded to a few seconds. The statusline starts this in the
+# The probes run in parallel, each bounded to a few seconds. The statusline starts this in the
 # background when the cache is older than 20 s, under `flock -n compute-load.flock` (one run at a time);
 # its 30 s refreshInterval (claude/settings.json) means this runs about every 30 s while any Claude
 # session is open, idle or not.
@@ -38,23 +40,30 @@ for p in $(pgrep -u "$(id -u)" -f "^/[^ ]*/claude( |\$)"); do
 done
 echo "$n"'
 
+# pacific is macOS: no /proc, load and cores come from sysctl ("{ 2.10 2.55 2.26 }").
+PACIFIC='printf "%s %s %s" "$(sysctl -n vm.loadavg | cut -d" " -f2)" "$(sysctl -n hw.ncpu)" "$(pgrep -x xcodebuild | wc -l)"'
+
 # "<load> <cores> <work>" -> "<pct>/<work>"
 fmt() { awk 'NF >= 3 && $2 > 0 { printf "%d/%d", $1 * 100 / $2, $3 }'; }
 
+# probe <host> <snippet>...
 probe() {
-	printf '%s\n%s\n' "$LOAD" "$SITES" |
-		timeout 6 ssh -o ConnectTimeout=3 -o BatchMode=yes "$1" bash -s 2>/dev/null | tr '\n' ' ' | fmt
+	local host=$1; shift
+	printf '%s\n' "$@" |
+		timeout 6 ssh -o ConnectTimeout=3 -o BatchMode=yes "$host" bash -s 2>/dev/null | tr '\n' ' ' | fmt
 }
 
 tmp=$(mktemp)
-probe ws1 >"$tmp.ws1" & # the ws1 alias logs in as root
-probe ocean >"$tmp.ocean" &
+probe ws1 "$LOAD" "$SITES" >"$tmp.ws1" & # the ws1 alias logs in as root
+probe ocean "$LOAD" "$SITES" >"$tmp.ocean" &
+probe pacific "$PACIFIC" >"$tmp.pacific" &
 subagents=$(find "/tmp/claude-$(id -u)" -path '*/tasks/*' -name 'a*.output' -mmin -2 2>/dev/null |
 	grep -cE '/a[0-9a-f]{16}\.output$')
 echo "$(bash -c "$LOAD") $(($(bash -c "$SESSIONS") + subagents))" | fmt >"$tmp.lagoon"
 wait
 
 mkdir -p "$(dirname "$cache")"
-printf 'ws1=%s ocean=%s lagoon=%s\n' "$(cat "$tmp.ws1")" "$(cat "$tmp.ocean")" "$(cat "$tmp.lagoon")" >"$tmp"
+printf 'ws1=%s ocean=%s lagoon=%s pacific=%s\n' \
+	"$(cat "$tmp.ws1")" "$(cat "$tmp.ocean")" "$(cat "$tmp.lagoon")" "$(cat "$tmp.pacific")" >"$tmp"
 mv "$tmp" "$cache"
-rm -f "$tmp.ws1" "$tmp.ocean" "$tmp.lagoon"
+rm -f "$tmp.ws1" "$tmp.ocean" "$tmp.lagoon" "$tmp.pacific"

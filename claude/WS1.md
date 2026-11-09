@@ -8,7 +8,7 @@ Three machines can do heavy work. The session on the laptop stays the advisor (t
 | `ocean` | the user's home desktop (see HOSTS.md): 16 cores, 31G; it also runs production services (the private HOSTS.md says which) | **80 %** of CPU, 16G, low priority | `bin/ocean-run` |
 | `lagoon` | this laptop: 24 cores, 124G; it has frozen under unbounded load before, and the user works on it | **30 %** of CPU, 32G, low priority | `bin/lagoon-run` |
 
-The helpers are in `/home/kannar/git/kannar/nunux/bin/` (not on `$PATH`, call them by absolute path). The status line shows each machine's load (1-minute load average / cores) next to its allowance, from a cache that `bin/compute-load` refreshes every 30 s: `ws1 61% (3) ocean 3% lagoon 15% (2)` (load, then the work in progress when there is any: active work sites on ws1 and ocean, Claude sessions + subagents on lagoon), colored against the allowance; an unreachable machine is struck through, without figures.
+The helpers are in `/home/kannar/git/kannar/nunux/bin/` (not on `$PATH`, call them by absolute path). The status line shows each machine's load (1-minute load average / cores) next to its allowance, from a cache that `bin/compute-load` refreshes every 30 s: `ws1 61% (3) ocean 3% lagoon 15% (2) pacific 24%` (load, then the work in progress when there is any: active work sites on ws1 and ocean, Claude sessions + subagents on lagoon, running `xcodebuild`s on pacific), colored against the allowance (pacific, the iOS build Mac, is not an offload target: shown for information, colored against all of it); an unreachable machine is struck through, without figures.
 
 ## Rule
 

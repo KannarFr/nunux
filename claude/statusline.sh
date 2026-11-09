@@ -90,7 +90,8 @@ if [ -n "$WEEK_PCT" ]; then
   [ -n "$WEEK_RESET_FMT" ] && USAGE_SEG+=$(printf '%s (resets in %s)%s' "$DIM" "$WEEK_RESET_FMT" "$RESET")
 fi
 
-# How busy the compute machines are (claude/WS1.md: ws1 first, ocean up to 80 %, lagoon up to 30 %).
+# How busy the compute machines are (claude/WS1.md: ws1 first, ocean up to 80 %, lagoon up to 30 %),
+# plus pacific, the iOS build Mac (not an offload target: colored against all of it).
 # Read from a cache that bin/compute-load refreshes in the background when it is older than 20 s
 # (under settings.json's 30 s refreshInterval, so each tick finds it stale): the status line itself
 # never waits on ssh. A machine that did not answer is struck through. One probe at a time: flock -n
@@ -113,8 +114,9 @@ STRIKE=$'\033[9m'
 LOAD_SEG=""
 if [ -r "$LOAD_CACHE" ]; then
   # each entry is host=<load %>/<work>, or host= when it did not answer (bin/compute-load says what
-  # "work" counts per machine: active work sites on ws1 and ocean, sessions + subagents on lagoon)
-  for spec in ws1:100 ocean:80 lagoon:30; do
+  # "work" counts per machine: active work sites on ws1 and ocean, sessions + subagents on lagoon,
+  # running xcodebuilds on pacific)
+  for spec in ws1:100 ocean:80 lagoon:30 pacific:100; do
     host=${spec%%:*}; cap=${spec##*:}
     val=$(sed -n "s/.*\b$host=\([0-9]*\/[0-9]*\).*/\1/p" "$LOAD_CACHE")
     if [ -n "$val" ]; then
