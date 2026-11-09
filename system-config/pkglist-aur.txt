@@ -13,6 +13,7 @@ hollywood
 iwgtk
 neofetch
 nitrogen
+osquery-bin
 piper-tts-bin
 slack-desktop
 stripe-cli

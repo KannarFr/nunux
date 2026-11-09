@@ -106,7 +106,6 @@ openblas
 openjdk-src
 openjdk21-src
 openssh
-osquery
 otf-font-awesome
 otf-latin-modern
 pass
