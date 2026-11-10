@@ -67,6 +67,9 @@ set -g status-right '#[fg=green]][ (#T) #[fg=blue]%Y-%m-%d #[fg=white]%H:%M#[def
 
 set -g status-right-length 100
 set -g history-limit 165536
+# mouse drag copies straight to the Wayland clipboard (germinal/VTE ignores OSC 52)
+set -g mouse on
+set -g copy-command 'wl-copy'
 
 # Bindings
 bind n next-window
