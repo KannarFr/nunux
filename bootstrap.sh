@@ -78,7 +78,7 @@ if [ "$WITH_AUR" -eq 1 ]; then
     fi
   fi
 else
-  warn "--no-aur: skipping yay + AUR packages (claude-code, germinal, handy, vban, … not installed)"
+  warn "--no-aur: skipping yay + AUR packages (claude-code, germinal, handy, vban, osquery-bin, … not installed; osqueryd will be skipped)"
 fi
 
 # 5. login shell ------------------------------------------------------------
@@ -245,6 +245,11 @@ cat <<'EOF'
       /home/kannar/git/kannar/nunux, repoint it or signing fails on every
       commit: git config --global gpg.program "$PWD/bin/gpg-sign-glow"
       (or set it back to plain 'gpg' to drop the glow).
+
+  [ ] osquery (Fleet agent, AUR osquery-bin): copy /etc/osquery/{osquery.flags,
+      osquery.conf,fleet.pem,secret.txt} from the old machine (root, 600; the
+      enroll secret is why they are not in this repo), then
+      sudo systemctl restart osqueryd. Without them it starts unenrolled.
 
   [ ] SSH keys: restore ~/.ssh/ keys — git pushes over SSH (github:/clever: rewrites).
 
