@@ -9,16 +9,11 @@ germinal
 gitlab-inbox-bin
 google-chrome
 handy-bin
-hollywood
 iwgtk
-neofetch
-nitrogen
 osquery-bin
-piper-tts-bin
 slack-desktop
 stripe-cli
 teams-for-linux
 vban-git
-visual-studio-code-bin
 wifiman-desktop
 yay
