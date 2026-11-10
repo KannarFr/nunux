@@ -20,8 +20,6 @@ set -g @resurrect-capture-pane-contents 'on'
 # set -g @plugin 'git@github.com/user/plugin'
 # set -g @plugin 'git@bitbucket.com/user/plugin'
 
-# Initialize TMUX plugin manager (keep this line at the very bottom of tmux.conf)
-run '~/.tmux/plugins/tpm/tpm'
 
 set -g default-command "${SHELL}"
 set -g base-index 1
@@ -67,9 +65,6 @@ set -g status-right '#[fg=green]][ (#T) #[fg=blue]%Y-%m-%d #[fg=white]%H:%M#[def
 
 set -g status-right-length 100
 set -g history-limit 165536
-# mouse drag copies straight to the Wayland clipboard (germinal/VTE ignores OSC 52)
-set -g mouse on
-set -g copy-command 'wl-copy'
 
 # Bindings
 bind n next-window
@@ -86,3 +81,21 @@ bind P pipe-pane -o "cat >>~/tmux-#W.log" \; display "Toggled logging to ~/tmux-
 
 # pi: use kitty CSI u extended-key encoding
 set -g extended-keys-format csi-u
+
+# Mouse: a drag copies to the Wayland clipboard (germinal is VTE, which ignores
+# OSC 52, so tmux must call wl-copy itself). Only where a Wayland session exists:
+# on ocean over ssh there is none, and germinal's own drag-select must keep working.
+if-shell '[ -n "$WAYLAND_DISPLAY" ] && command -v wl-copy >/dev/null' {
+  set -g mouse on
+  set -g copy-command 'wl-copy'
+  # copy on release but stay in copy mode, scrolled where you were
+  bind -T copy-mode    MouseDragEnd1Pane send -X copy-pipe-no-clear
+  bind -T copy-mode-vi MouseDragEnd1Pane send -X copy-pipe-no-clear
+  # wheel in less/man/vim (alternate screen, no mouse reporting): send arrow
+  # keys like VTE's alternate-scroll did, instead of a mouse event they ignore
+  bind -n WheelUpPane   if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' { send -M } { if -F '#{alternate_on}' { send -N 3 Up } { copy-mode -e } }
+  bind -n WheelDownPane if -F '#{||:#{pane_in_mode},#{mouse_any_flag}}' { send -M } { if -F '#{alternate_on}' { send -N 3 Down } }
+}
+
+# Initialize TMUX plugin manager (keep this line at the very bottom of tmux.conf)
+run '~/.tmux/plugins/tpm/tpm'

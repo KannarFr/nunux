@@ -179,6 +179,7 @@ waybar
 wev
 wget
 wireguard-tools
+wl-clipboard
 wlr-randr
 wlsunset
 wmenu
