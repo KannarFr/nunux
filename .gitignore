@@ -9,3 +9,6 @@ zprofile
 # Generated Python bytecode (safety net for any bin/ python helpers)
 __pycache__/
 *.pyc
+pkgbuild/*/src/
+pkgbuild/*/pkg/
+pkgbuild/*/*.tar.*

@@ -1,0 +1,34 @@
+# Based on the AUR germinal PKGBUILD (maintainer: bobi), which was stuck at 29.
+# Build: cd pkgbuild/germinal && makepkg -f && sudo pacman -U germinal-[0-9]*.pkg.tar.zst
+
+pkgname=germinal
+pkgver=31
+pkgrel=1
+pkgdesc="Minimalist terminal emulator based on vte and tmux"
+
+license=('GPL3')
+url="https://github.com/Keruspe/Germinal"
+source=("https://www.imagination-land.org/files/$pkgname/$pkgname-$pkgver.tar.xz")
+
+makedepends=('meson' 'appstream-glib')
+
+depends=('glib2' 'gtk4' 'vte4' 'pango' 'tmux' 'pcre2' 'libadwaita' 'dbus' 'gsettings-desktop-schemas')
+
+install=$pkgname.install
+
+arch=('x86_64')
+
+build () {
+    cd "$srcdir/$pkgname-$pkgver"
+    # what the AUR patch did: GNOME Shell only, harmless elsewhere
+    sed -i '/^StartupNotify=true$/a X-GNOME-SingleWindow=false' data/desktop/org.gnome.Germinal.desktop.in.in
+
+    arch-meson _build
+    meson compile -C _build
+}
+
+package () {
+    cd "$srcdir/$pkgname-$pkgver"
+    meson install -C _build --destdir "$pkgdir"
+}
+sha256sums=('1cd4a328c6f465f9f69ffe5bda7b6ad9163fc858ea3ec50eeeaeee1fd21d0292')
