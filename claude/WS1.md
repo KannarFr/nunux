@@ -43,7 +43,9 @@ EOF
 - It runs with `--permission-mode bypassPermissions`. Tell it not to push, and not to touch anything outside its directory.
 - **Its edits stay on ws1 until collected**: review `ws1 diff`, then apply with `ws1 diff | git apply` from the same repo. Collect before the next `sync` or `run` of that repo, which overwrites the remote copies of the files it sends. Parallel agents on the same repo share one remote tree, so give them disjoint files or run them one after another.
 - Its answer is a report, not a verified fact: check the diff here.
-- Keep at most 4 agents running at once unless the user asks for more.
+- Keep at most 4 agents running at once unless the user asks for more. `ws1 load` counts them: with 4 running, ws1 is `busy`.
+- `ws1 run` **queues** while ws1 is busy (or a run started less than 2 min ago): it polls every 30 s for up to `WS1_QUEUE_MAX` (7200 s), then gives up. Run it in the background with `--wait`; `--no-queue` refuses at once instead (to send the work to ocean), `--force` skips the check.
+- The helper appends a « ws1 resource budget » footer to every brief (8 parallel jobs, jest `--maxWorkers=4`, sbt one module at a time, fewer than 15 containers, nothing big in `/tmp`) and sets `CARGO_BUILD_JOBS`, `RUST_TEST_THREADS`, `NEXTEST_TEST_THREADS` to 8 and `TMPDIR` to the run's directory on disk. Agents run in a tmux server on socket `ws1` (`tmux -L ws1`).
 - Once a task's diffs are collected, run `ws1 clean`: it deletes finished runs and the repo copies they left, and keeps any copy with an agent still running in it or with changes not yet in the laptop's tree (`-n` previews). Never pass `--force` unprompted.
 
 ## Builds and tests on ws1
@@ -54,6 +56,14 @@ ws1 exec 'cargo test -p foo'    # run there, in the same subdirectory
 ```
 
 Only git repos can be synced. `sync` sends tracked and untracked-but-not-ignored files only, so the remote `target/` survives as a build cache and gitignored or skip-worktree files stay local; files deleted here are deleted there on the next sync. The host has cargo, node, gcc, python, java 21 (default; 25 also installed), sbt and docker with compose and buildx; kannar is in the `docker` group. Docker publishes ports on 127.0.0.1 only (the VM is on the internet, with no firewall) and keeps its data in `/data/docker`, outside the encrypted home. Images and container layers are in containerd's store (Docker uses the containerd image store), which lives in `/data/containerd` (`root` in `/etc/containerd/config.toml`, moved there on 2026-10-20 after it had filled the 30G `/`). Watch `/` with `df -h /`: it is small. Stopping docker or containerd removes containers started with `--rm`, volumes included.
+
+## Caps (since 2026-11-12)
+
+On 2026-11-12 ws1 thrashed (load 568/32, 2 % memory free, memory pressure 97 %): 4 agents, each with test suites fanned out to 52 testcontainers, jest and sbt, plus a 9G cargo `target/` in `/tmp` (tmpfs, i.e. RAM), no swap. The agent count alone does not bound the load, so:
+
+- **`ws1.slice`** (`/etc/systemd/system/ws1.slice` on ws1): `MemoryHigh=50G`, `MemoryMax=56G`, `CPUWeight=50`, around everything kannar's offloaded work does. Its children: `ws1-agents.slice` (`ws1 run` agents and `ws1 exec` commands, started by root's `systemd-run --scope --uid=kannar`, because Clever Cloud's sshd has `UsePAM no`, so kannar's ssh sessions land in `sshd.service` and cannot be capped by themselves) and `ws1-docker.slice` (every container: `cgroup-parent` in `/etc/docker/daemon.json`, with `live-restore: true`; backup `daemon.json.bak-20261112`). Interactive `ws1 sh` stays uncapped.
+- **Swap**: 16G file `/home/kannar/.swap` (root, 600) in the encrypted home, so memory pages never land on clear disk; `ws1 unlock` turns it on, `ws1 lock` off. The kernel has no zram module.
+- `ws1 load` is also `busy` when memory pressure (`full avg60` in `/proc/pressure/memory`) reaches 10 %.
 
 ## The encrypted home
 

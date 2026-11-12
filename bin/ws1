@@ -20,9 +20,12 @@
 # inside it. Lose $KEY and the home is gone.
 #
 #   ws1 load                      one status line; exit 0 free, 1 busy, 2 unreachable
-#   ws1 run [opts] <brief | ->    sync, start an agent in the same subdirectory, print its id
+#                                 (busy: load, memory, memory pressure or agent count over the limits below)
+#   ws1 run [opts] <brief | ->    wait for a free ws1, sync, start an agent in the same
+#                                 subdirectory (brief + a resource-budget footer), print its id
 #       --wait      block until it ends and print its answer
 #       --force     start even when ws1 is busy
+#       --no-queue  refuse when busy instead of waiting (up to $WS1_QUEUE_MAX, 7200 s) for it to be free
 #       --no-sync   run on what is already there
 #   ws1 wait <id> [secs]          block until it ends (default 3600), print its answer
 #   ws1 result <id>               print the answer of a finished run
@@ -30,7 +33,7 @@
 #   ws1 kill <id>                 stop a run
 #   ws1 diff                      what changed on ws1 since the last sync, as a patch
 #   ws1 sync                      copy the current git tree to the same path under kannar's home
-#   ws1 exec <command>            run a command there, in the same subdirectory
+#   ws1 exec <command>            run a command there, in the same subdirectory, in the capped slice
 #   ws1 clean [-n] [--force]      delete finished runs and the repo copies they left behind
 #       -n          show what would go, delete nothing
 #       --force     also delete copies whose changes are not on the laptop
@@ -46,9 +49,32 @@ CLAUDE=$RHOME/.local/bin/claude
 # Busy = the host would slow the work down more than this laptop would.
 MAX_LOAD_PER_CORE=0.75
 MIN_MEM_AVAIL_PCT=20
+MAX_MEM_PRESSURE=10                 # /proc/pressure/memory "full avg60", % of time stalled
+MAX_AGENTS=4
+QUEUE_MAX=${WS1_QUEUE_MAX:-7200}    # how long `run` waits for a free ws1, in seconds
+# Agents and `exec` run as kannar in ws1-agents.slice, docker containers in
+# ws1-docker.slice (dockerd's cgroup-parent); both count against ws1.slice
+# (MemoryHigh 50G, MemoryMax 56G, CPUWeight 50, in /etc/systemd/system on ws1).
+# kannar's ssh sessions cannot be put there (Clever Cloud's sshd has UsePAM no,
+# so no logind session), hence root's systemd-run.
+SLICE=ws1-agents.slice
+# Per-run limits, enforced through the environment, and the brief's footer.
+RUN_ENV='CARGO_BUILD_JOBS=8 RUST_TEST_THREADS=8 NEXTEST_TEST_THREADS=8'
+BUDGET='
+
+## ws1 resource budget (added by the ws1 helper)
+
+You share this VM (32 cores, 62 GB, no more than 4 agents) with other agents. Your processes and any docker containers count against one cgroup cap: going over it means swapping and OOM kills for everyone, not more speed.
+- At most 8 parallel jobs. CARGO_BUILD_JOBS, RUST_TEST_THREADS and NEXTEST_TEST_THREADS are already set to 8; for jest pass --maxWorkers=4; for sbt, test one module at a time.
+- Test containers (testcontainers, docker): run the suites that start containers one module or test binary at a time, never the whole workspace at once, and keep fewer than 15 containers alive (docker ps -q | wc -l). Remove containers you started by hand.
+- /tmp is RAM (tmpfs): never put build outputs or large files there. TMPDIR already points to a directory on disk.
+- Before a heavy command, if "full avg10" in /proc/pressure/memory is above 10, wait a minute and check again instead of adding load.'
 
 TMP=$(mktemp)
 trap 'rm -f "$TMP"' EXIT
+
+# Remote: is run $1's tmux session alive (socket ws1, or the default one of older runs)?
+HAS='has() { tmux -L ws1 has-session -t "ws1-$1" 2>/dev/null || tmux has-session -t "ws1-$1" 2>/dev/null; };'
 
 die() { printf 'ws1: %s\n' "$*" >&2; exit 64; }
 r() { ssh -o BatchMode=yes -o ConnectTimeout=10 "$HOST" "$@"; }
@@ -67,16 +93,18 @@ run_id() {
 }
 
 load() {
-	local out l1 n mem agents home
-	out=$(r 'read -r l1 _ </proc/loadavg; echo "$l1 $(nproc) $(awk "/^MemTotal/{t=\$2} /^MemAvailable/{a=\$2} END{printf \"%d\", a*100/t}" /proc/meminfo) $(pgrep -u kannar -xc claude) $(mountpoint -q /home/kannar && echo unlocked || echo LOCKED)"') \
+	local out l1 n mem psi agents home
+	out=$(r 'read -r l1 _ </proc/loadavg; echo "$l1 $(nproc) $(awk "/^MemTotal/{t=\$2} /^MemAvailable/{a=\$2} END{printf \"%d\", a*100/t}" /proc/meminfo) $(sed -n "s/^full avg10=[0-9.]* avg60=\([0-9.]*\).*/\1/p" /proc/pressure/memory) $(pgrep -u kannar -xc claude) $(mountpoint -q /home/kannar && echo unlocked || echo LOCKED)"') \
 		|| { echo "ws1 unreachable"; return 2; }
-	read -r l1 n mem agents home <<<"$out"
-	if awk -v l="$l1" -v n="$n" -v m="$mem" -v L="$MAX_LOAD_PER_CORE" -v M="$MIN_MEM_AVAIL_PCT" \
-		'BEGIN{exit !(l/n >= L || m < M)}'; then
-		echo "ws1 busy: load $l1/$n cores, mem ${mem}% available, $agents agents, home $home"
+	read -r l1 n mem psi agents home <<<"$out"
+	local status="load $l1/$n cores, mem ${mem}% available, mem pressure ${psi}%, $agents agents, home $home"
+	if awk -v l="$l1" -v n="$n" -v m="$mem" -v p="$psi" -v a="$agents" -v L="$MAX_LOAD_PER_CORE" \
+		-v M="$MIN_MEM_AVAIL_PCT" -v P="$MAX_MEM_PRESSURE" -v A="$MAX_AGENTS" \
+		'BEGIN{exit !(l/n >= L || m < M || p >= P || a >= A)}'; then
+		echo "ws1 busy: $status"
 		return 1
 	fi
-	echo "ws1 free: load $l1/$n cores, mem ${mem}% available, $agents agents, home $home"
+	echo "ws1 free: $status"
 }
 
 result() {
@@ -92,21 +120,45 @@ wait_for() {
 	local id; id=$(run_id "${1:-}")
 	local secs="${2:-3600}"
 	[[ "$secs" =~ ^[0-9]+$ ]] || die "timeout must be a number of seconds: $secs"
-	u "end=\$((SECONDS + $secs))
+	u "$HAS end=\$((SECONDS + $secs))
 		until [ -f $RUNS/$id/rc ]; do
-			tmux has-session -t ws1-$id 2>/dev/null || [ -f $RUNS/$id/rc ] || { echo 'ws1: run $id died without a result' >&2; exit 5; }
+			has $id || [ -f $RUNS/$id/rc ] || { echo 'ws1: run $id died without a result' >&2; exit 5; }
 			[ \$SECONDS -lt \$end ] || { echo 'ws1: run $id still going after ${secs}s' >&2; exit 4; }
 			sleep 5
 		done"
 	result "$id"
 }
 
+# Wait until ws1 is free and no run started in the last 2 minutes (the load of a
+# run that just started does not show yet), or QUEUE_MAX seconds.
+queue() {
+	local start=$SECONDS last=-1000 st rc
+	while :; do
+		rc=0; st=$(load) || rc=$?
+		((rc != 2)) || { echo "$st" >&2; return 1; }
+		if ((rc == 0)); then
+			u "find $RUNS -mindepth 2 -maxdepth 2 -name brief -mmin -2 2>/dev/null | grep -q ." </dev/null \
+				|| { echo "$st" >&2; return 0; }
+			st="ws1 free, but a run started less than 2 minutes ago"
+		fi
+		((SECONDS - start < QUEUE_MAX)) || { echo "$st" >&2; return 1; }
+		if ((SECONDS - last >= 300)); then echo "queued ($((SECONDS - start))s): $st" >&2; last=$SECONDS; fi
+		sleep 30
+	done
+}
+
+# As kannar, in $SLICE (see the top of this file). Needs root's ssh.
+in_slice() {
+	printf 'systemd-run --quiet --scope --slice=%s --uid=kannar --gid=kannar -E HOME=%s -E USER=kannar -E LOGNAME=kannar bash -l' "$SLICE" "$RHOME"
+}
+
 run() {
-	local words=() wait=0 force=0 nosync=0 brief=
+	local words=() wait=0 force=0 noqueue=0 nosync=0 brief=
 	while (($#)); do
 		case "$1" in
 			--wait) wait=1; shift ;;
 			--force) force=1; shift ;;
+			--no-queue) noqueue=1; shift ;;
 			--no-sync) nosync=1; shift ;;
 			-) brief=$(cat); shift ;;
 			-*) die "unknown option $1" ;;
@@ -115,31 +167,39 @@ run() {
 	done
 	((${#words[@]} == 0)) || brief="${brief:+$brief }${words[*]}"
 	[[ -n "$brief" ]] || die "missing brief"
-	((force)) || load >&2 || die "not starting (run the agent locally, or pass --force)"
+	if ((noqueue)); then
+		((force)) || load >&2 || die "not starting (run the agent locally, or pass --force)"
+	elif ((!force)); then
+		queue || die "not starting: ws1 still busy after ${QUEUE_MAX}s, or unreachable (run the agent elsewhere, or pass --force)"
+	fi
 	if ((nosync)); then remote_paths; else sync >&2; fi
 
 	local id; id="$(date +%s)-$RANDOM"
+	local d="$RUNS/$id" abs="$RHOME/$RUNS/$id" cwd; cwd=$(printf '%q' "$REMOTE_CWD")
 	# bypassPermissions: nobody is there to answer a prompt, and kannar is an
 	# unprivileged user on a disposable VM, holding no credentials but Claude's.
-	printf '%s' "$brief" | u "set -e; d=$RUNS/$id; mkdir -p \$d; cat >\$d/brief; echo $(printf '%q' "$REMOTE_CWD") >\$d/dir
-		tmux new-session -d -s ws1-$id -c $(printf '%q' "$REMOTE_CWD") \
-			\"$CLAUDE -p --permission-mode bypassPermissions <\$HOME/\$d/brief >\$HOME/\$d/out 2>\$HOME/\$d/err; echo \\\$? >\$HOME/\$d/rc\""
+	# The tmux server on socket ws1 is started in $SLICE, so every session it
+	# forks is counted there too.
+	local cmd="cd $cwd && env $RUN_ENV TMPDIR=$abs/tmp $CLAUDE -p --permission-mode bypassPermissions <$abs/brief >$abs/out 2>$abs/err; echo \$? >$abs/rc"
+	local start="tmux -L ws1 new-session -d -s ws1-$id -c $cwd $(printf '%q' "$cmd")"
+	printf '%s' "$brief$BUDGET" | u "set -e; mkdir -p $d/tmp; cat >$d/brief; echo $cwd >$d/dir; printf '%s\n' $(printf '%q' "$start") >$d/start"
+	r "$(in_slice) $abs/start" || die "could not start run $id"
 	echo "$id"
 	((wait)) && wait_for "$id"
 	return 0
 }
 
 list() {
-	u "cd $RUNS 2>/dev/null || exit 0
+	u "$HAS cd $RUNS 2>/dev/null || exit 0
 		for d in */; do d=\${d%/}; [ -f \$d/dir ] || continue
-			if [ -f \$d/rc ]; then s=\"exit \$(cat \$d/rc)\"; elif tmux has-session -t ws1-\$d 2>/dev/null; then s=running; else s=died; fi
+			if [ -f \$d/rc ]; then s=\"exit \$(cat \$d/rc)\"; elif has \$d; then s=running; else s=died; fi
 			printf '%s\t%s\t%s\n' \$d \"\$s\" \"\$(cat \$d/dir)\"
 		done"
 }
 
 kill_run() {
 	local id; id=$(run_id "${1:-}")
-	u "tmux kill-session -t ws1-$id 2>/dev/null; [ -f $RUNS/$id/rc ] || echo killed >$RUNS/$id/rc"
+	u "tmux -L ws1 kill-session -t ws1-$id 2>/dev/null; tmux kill-session -t ws1-$id 2>/dev/null; [ -f $RUNS/$id/rc ] || echo killed >$RUNS/$id/rc"
 	echo "killed $id"
 }
 
@@ -148,13 +208,15 @@ unlock() {
 	# The key crosses on stdin and is never written on the VM.
 	r "mountpoint -q $RHOME && { echo 'already unlocked'; exit 0; }
 		[ -e /dev/mapper/kannar-home ] || cryptsetup open --key-file - --allow-discards /data/kannar-home.luks kannar-home
-		mount -o discard,nodev,nosuid /dev/mapper/kannar-home $RHOME && echo unlocked" <"$KEY"
+		mount -o discard,nodev,nosuid /dev/mapper/kannar-home $RHOME && echo unlocked
+		[ ! -f $RHOME/.swap ] || swapon $RHOME/.swap" <"$KEY"
 }
 
 lock() {
 	# Drop kannar's multiplexed connection first: its shell would hold the mount busy.
 	ssh -O exit -l kannar "$HOST" 2>/dev/null || true
 	r "pkill -u kannar tmux; sleep 1
+		! swapon --show=NAME --noheadings | grep -qx $RHOME/.swap || swapoff $RHOME/.swap
 		! mountpoint -q $RHOME || umount $RHOME; [ ! -e /dev/mapper/kannar-home ] || cryptsetup close kannar-home; echo locked"
 }
 
@@ -224,8 +286,8 @@ clean() {
 
 	# Finished runs. Their records hold the brief and the answer, never code.
 	local finished
-	finished=$(u "cd $RUNS 2>/dev/null || exit 0
-		for d in */; do d=\${d%/}; [ -f \$d/rc ] && ! tmux has-session -t ws1-\$d 2>/dev/null && echo \$d; done; true")
+	finished=$(u "$HAS cd $RUNS 2>/dev/null || exit 0
+		for d in */; do d=\${d%/}; [ -f \$d/rc ] && ! has \$d && echo \$d; done; true")
 	if [[ -n "$finished" ]]; then
 		echo "runs: $(wc -l <<<"$finished") finished"
 		((dry)) || u "cd $RUNS && rm -rf $(tr '\n' ' ' <<<"$finished")"
@@ -281,7 +343,9 @@ case "${1:-}" in
 	kill) shift; kill_run "$@" ;;
 	diff) diff_remote ;;
 	sync) sync ;;
-	exec) shift; (($#)) || die "missing command"; remote_paths; u "cd $(printf '%q' "$REMOTE_CWD") && $*" ;;
+	exec) shift; (($#)) || die "missing command"; remote_paths
+		r "mountpoint -q $RHOME" || die "home locked (try: ws1 unlock)"
+		r "$(in_slice) -c $(printf '%q' "cd $(printf '%q' "$REMOTE_CWD") && $*")" ;;
 	unlock) unlock ;;
 	lock) lock ;;
 	sh) shift; exec ssh -l kannar "$HOST" "$@" ;;
