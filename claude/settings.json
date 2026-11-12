@@ -12,7 +12,6 @@
     ],
     "defaultMode": "auto"
   },
-  "model": "opus",
   "hooks": {
     "Notification": [
       {
@@ -117,5 +116,6 @@
       "**Org-specific CLIs**: rtk (token-saving proxy, routine), clever, glab, gh, npx eas-cli, adb, bin/ws1 (offload to the ws1 VM)."
     ]
   },
-  "voiceEnabled": true
+  "voiceEnabled": true,
+  "model": "opus"
 }
