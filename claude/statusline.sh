@@ -11,6 +11,14 @@ IFS=$'\x1f' read -r SESSION_ID MODEL DIR COST CTX FIVEH_PCT FIVEH_RESET WEEK_PCT
       (.rate_limits.seven_day.used_percentage | pct), .rate_limits.seven_day.resets_at // "",
       .workspace.project_dir // "" ] | map(tostring) | join("\u001f")' <<<"$input")
 
+# The tmux window takes the session's peer name (axo4-55, what ListAgents shows): tmux.conf's
+# automatic-rename-format reads it from this pane option while claude is the pane's command.
+if [ -n "$TMUX_PANE" ] && [ -n "$SESSION_ID" ]; then
+  f=$(grep -l "\"sessionId\":\"$SESSION_ID\"" ~/.claude/sessions/*.json 2>/dev/null | head -1)
+  name=$([ -n "$f" ] && jq -r '.name // empty' "$f" 2>/dev/null)
+  [ -n "$name" ] && tmux set -p -t "$TMUX_PANE" @claude_name "$name" 2>/dev/null
+fi
+
 # The folder the session was launched in (workspace.project_dir), with ~ for $HOME; when the session
 # has since moved, the current folder follows it, relative to the launch folder when inside it.
 [ -z "$LAUNCH" ] && LAUNCH=$DIR

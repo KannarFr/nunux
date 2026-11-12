@@ -30,6 +30,9 @@ set-option -g status-keys vi
 set-option -g visual-bell off
 set-option -g set-titles on
 set-option -g set-titles-string '#H:#S.#I.#P #W #T' # window number,program name,active (or not)
+# claude windows take the session's peer name (axo4-55), set as the pane option @claude_name by
+# claude/statusline.sh; until it is set, the launch folder: axo4:claude
+setw -g automatic-rename-format '#{?pane_in_mode,[tmux],#{?#{==:#{pane_current_command},claude},#{?@claude_name,#{@claude_name},#{b:pane_current_path}:claude},#{pane_current_command}}}#{?pane_dead,[dead],}'
 set-option -g status-justify left
 set-option -g status-style 'bg=default fg=cyan'
 set-option -g status-left-length 40
