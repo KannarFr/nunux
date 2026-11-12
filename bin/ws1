@@ -50,7 +50,7 @@ CLAUDE=$RHOME/.local/bin/claude
 MAX_LOAD_PER_CORE=0.75
 MIN_MEM_AVAIL_PCT=20
 MAX_MEM_PRESSURE=10                 # /proc/pressure/memory "full avg60", % of time stalled
-MAX_AGENTS=4
+MAX_AGENTS=12                       # safety ceiling only: availability decides below it
 QUEUE_MAX=${WS1_QUEUE_MAX:-7200}    # how long `run` waits for a free ws1, in seconds
 # Agents and `exec` run as kannar in ws1-agents.slice, docker containers in
 # ws1-docker.slice (dockerd's cgroup-parent); both count against ws1.slice
@@ -64,7 +64,7 @@ BUDGET='
 
 ## ws1 resource budget (added by the ws1 helper)
 
-You share this VM (32 cores, 62 GB, no more than 4 agents) with other agents. Your processes and any docker containers count against one cgroup cap: going over it means swapping and OOM kills for everyone, not more speed.
+You share this VM (32 cores, 62 GB) with other agents; how many depends on how loaded it is. Your processes and any docker containers count against one cgroup cap: going over it means swapping and OOM kills for everyone, not more speed.
 - At most 8 parallel jobs. CARGO_BUILD_JOBS, RUST_TEST_THREADS and NEXTEST_TEST_THREADS are already set to 8; for jest pass --maxWorkers=4; for sbt, test one module at a time.
 - Test containers (testcontainers, docker): run the suites that start containers one module or test binary at a time, never the whole workspace at once, and keep fewer than 15 containers alive (docker ps -q | wc -l). Remove containers you started by hand.
 - /tmp is RAM (tmpfs): never put build outputs or large files there. TMPDIR already points to a directory on disk.
