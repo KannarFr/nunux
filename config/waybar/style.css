@@ -92,7 +92,6 @@ button:hover {
 #idle_inhibitor,
 #scratchpad,
 #power-profiles-daemon,
-#mpd,
 #custom-cpu-load,
 #custom-cpu-temp,
 #custom-fan,
@@ -334,23 +333,6 @@ label:focus {
 #idle_inhibitor.activated {
     background-color: #ecf0f1;
     color: #2d3436;
-}
-
-#mpd {
-    background-color: #3a8a3a;
-    color: #000000;
-}
-
-#mpd.disconnected {
-    background-color: #f53c3c;
-}
-
-#mpd.stopped {
-    background-color: #90b1b1;
-}
-
-#mpd.paused {
-    background-color: #51a37a;
 }
 
 #language {
