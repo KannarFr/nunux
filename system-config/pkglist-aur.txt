@@ -12,7 +12,6 @@ handy-bin
 iwgtk
 osquery-bin
 slack-desktop
-stripe-cli
 teams-for-linux
 vban-git
 wifiman-desktop

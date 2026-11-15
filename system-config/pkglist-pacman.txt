@@ -57,6 +57,7 @@ googleworkspace-cli
 gradle
 gst-plugins-good
 htop
+inetutils
 intltool
 iw
 iwd
