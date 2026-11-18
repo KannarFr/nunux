@@ -1,0 +1,9 @@
+# sway, desktop profile (ocean). Included from config/sway/config through
+# ~/.config/sway/profile, a symlink apply.sh points at this file or at ./laptop.
+# The lock (swayidle) and the waybar launch stay in the shared config.
+#
+# No kanshi: one monitor, nothing to hotplug; sway's preferred mode at scale 1
+# is right for the 24" 2560x1440 (122 dpi). Add an `output` line here if that
+# changes. No battery-watch.
+
+set $waybar_cfg desktop.jsonc

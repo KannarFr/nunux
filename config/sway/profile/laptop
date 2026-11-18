@@ -1,0 +1,23 @@
+# sway, laptop profile (the TUXEDO InfinityBook). Included from config/sway/config
+# through ~/.config/sway/profile, a symlink apply.sh points at this file or at
+# ./desktop (see apply.sh). Only what depends on the machine lives here; the
+# lock (swayidle) and the waybar launch stay in the shared config.
+
+# Output layout and per-display scaling live in ~/.config/kanshi/config, which
+# reapplies on hotplug; see that file for the dpi arithmetic. This line is only
+# the fallback for a session where kanshi failed to start, so the internal panel
+# is never left at scale 1.
+output eDP-1 scale 1.4
+exec kanshi
+# A sway reload reapplies only the output lines above, so a docked external
+# drops back to scale 1; kanshi does not notice (no hotplug). Ask the running
+# kanshi to reapply its profile on every reload. `kanshictl reload` talks to the
+# daemon, it never starts a second one; at login it may run before kanshi is up
+# and fail harmlessly.
+exec_always kanshictl reload
+
+# Low battery: warns, then suspends on critical. A user unit for the reason
+# given next to disk-watch in config/sway/config.
+exec systemctl --user start battery-watch.service
+
+# Waybar layout: the default, config.jsonc (set in config/sway/config).

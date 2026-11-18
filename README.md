@@ -45,6 +45,11 @@ safe to re-run any time: a path already pointing at this repo is left alone
 (`ok`), a stale/broken symlink is repointed, and a pre-existing *real* file is
 renamed to `<path>.bak` before linking (`bak`).
 
+It also picks the machine profile, `laptop` or `desktop`: which
+`config/sway/profile/*` file `~/.config/sway/profile` links to (outputs, idle,
+battery watcher, waybar layout). It keeps the one already linked, else chooses
+`laptop` when the machine has a battery; `./apply.sh --profile desktop` forces it.
+
 ### New-machine checklist
 
 `bootstrap.sh` automates the safe, host-agnostic steps and prints the rest as a

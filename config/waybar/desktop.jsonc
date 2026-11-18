@@ -1,0 +1,37 @@
+// -*- mode: jsonc -*-
+// Desktop bar layout (ocean: MSI B550, Ryzen, RTX 3080 Ti, wired only).
+// Started by config/sway/profile/desktop. Module definitions: modules.jsonc.
+//
+// Left out on purpose, compared with the laptop: battery, power draw and
+// backlight (none on a desktop), the TUXEDO fan tile (tccd), the wifi
+// `network` tile and its iwgtk click, the VPN tile (it tells the laptop's
+// tunnel from the home line; this box is the home), and power-profiles-daemon
+// (not installed here).
+{
+    "include": ["~/.config/waybar/modules.jsonc"],
+    "height": 30,
+    "spacing": 4,
+    "modules-left": [
+        "sway/workspaces",
+        "sway/mode",
+        "sway/scratchpad"
+    ],
+    "modules-center": [
+        "sway/window"
+    ],
+    "modules-right": [
+        "idle_inhibitor",
+        "pulseaudio",
+        "custom/link",
+        "custom/cpu-load",
+        "custom/cpu-temp",
+        "custom/gpu",
+        "memory#ram",
+        "memory#zram",
+        "disk",
+        "custom/fans",
+        "clock",
+        "tray",
+        "custom/power"
+    ]
+}

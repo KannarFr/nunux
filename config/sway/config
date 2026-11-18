@@ -16,8 +16,16 @@ input type:touchpad {
 # Helper scripts tracked in the dotfiles repo (defined before first use)
 set $bin /home/kannar/git/kannar/nunux/bin
 
-exec waybar
 exec swaync
+# The resume goes through bin/edp-wake rather than a bare `output * power on`:
+# when docked it also cycles eDP-1 off/on, because twice on 2026-10-09 the
+# panel stayed black after the idle blank while sway, the kernel and the
+# backlight all reported it on (see CLAUDE.md). Without an active eDP-1 (the
+# desktop) it is just `output * power on`.
+exec swayidle -w \
+          timeout 3600 'swaylock -f -c 000000' \
+          timeout 3900 'swaymsg "output * power off"' resume $bin/edp-wake \
+          before-sleep 'swaylock -f -c 000000'
 # volume/brightness popup; `exec`, not exec_always — a reload would start a second server
 exec swayosd-server
 # gammastep (blue-light filter, config at ~/.config/gammastep/config.ini)
@@ -29,21 +37,13 @@ exec wl-paste --watch cliphist store
 # Wayland toplevel that GTK/webkit overlay window silently fails to appear
 # (regressed after a webkit2gtk/GTK update ~Jul 2026); under XWayland it floats fine.
 exec GDK_BACKEND=x11 handy
-# The resume goes through bin/edp-wake rather than a bare `output * power on`:
-# when docked it also cycles eDP-1 off/on, because twice on 2026-10-09 the
-# panel stayed black after the idle blank while sway, the kernel and the
-# backlight all reported it on (see CLAUDE.md).
-exec swayidle -w \
-          timeout 3600 'swaylock -f -c 000000' \
-          timeout 3900 'swaymsg "output * power off"' resume $bin/edp-wake \
-          before-sleep 'swaylock -f -c 000000'
-# battery-watch and disk-watch are user units, not bare `exec` loops: both are
+# disk-watch (and the laptop's battery-watch) are user units, not bare `exec` loops: both are
 # infinite loops whose death is otherwise silent, and earlyoom on this host
 # kills per-process, so a stray `sh` is precisely what it picks off during the
 # memory or disk pressure they exist to report on. Restart=always brings them
 # back, and `systemctl --user status` plus the journal make a failure visible.
 # Started rather than enabled, for the same reason as yubikey-glow below.
-exec systemctl --user start battery-watch.service disk-watch.service
+exec systemctl --user start disk-watch.service
 # bt-watch: notification when a Bluetooth device (the AirPods) connects or
 # disconnects. Same unit shape, same reason to start it from here.
 exec systemctl --user start bt-watch.service
@@ -88,18 +88,15 @@ set $menu bemenu-run -l 15 -H 30 --fn "JetBrainsMono Nerd Font 11"
 #
 # You can get the names of your outputs by running: swaymsg -t get_outputs
 
-# Output layout and per-display scaling live in ~/.config/kanshi/config, which
-# reapplies on hotplug; see that file for the dpi arithmetic. This line is only
-# the fallback for a session where kanshi failed to start, so the internal panel
-# is never left at scale 1.
-output eDP-1 scale 1.4
-exec kanshi
-# A sway reload reapplies only the output lines above, so a docked external
-# drops back to scale 1; kanshi does not notice (no hotplug). Ask the running
-# kanshi to reapply its profile on every reload. `kanshictl reload` talks to the
-# daemon, it never starts a second one; at login it may run before kanshi is up
-# and fail harmlessly.
-exec_always kanshictl reload
+# Everything that depends on the machine (outputs and kanshi, battery-watch,
+# which waybar layout) is in the profile: laptop or desktop, linked by apply.sh
+# to ~/.config/sway/profile (config/sway/profile/). Included after the `set`
+# lines above, which it uses ($bin). The lock (swayidle) and the bar stay here,
+# so a missing profile (sway only logs the failed include) still leaves a
+# locking session with the laptop bar.
+set $waybar_cfg config.jsonc
+include ~/.config/sway/profile
+exec waybar -c ~/.config/waybar/$waybar_cfg
 
 ### Idle configuration
 #

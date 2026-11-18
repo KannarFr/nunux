@@ -7,18 +7,42 @@
 # repointed. Run it after cloning on a new machine, or after adding an entry to
 # the MAP table below.
 #
-#   ./apply.sh            link everything
-#   ./apply.sh --dry-run  show what would happen, change nothing
+#   ./apply.sh                     link everything
+#   ./apply.sh --dry-run           show what would happen, change nothing
+#   ./apply.sh --profile desktop   force the machine profile (laptop|desktop)
+#
+# The machine profile picks what differs between the laptop and a desktop
+# (ocean): ~/.config/sway/profile links to config/sway/profile/<profile>,
+# which holds the outputs, swayidle, battery-watch and which waybar layout to
+# start. Without --profile: the profile already linked, else laptop when the
+# machine has a battery, desktop otherwise.
 #
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DRY=0
-case "${1:-}" in
-  "")                 ;;
-  --dry-run|-n)       DRY=1 ;;
-  *) printf 'usage: %s [--dry-run|-n]\n' "${0##*/}" >&2; exit 2 ;;
-esac
+PROFILE=
+usage() { printf 'usage: %s [--dry-run|-n] [--profile laptop|desktop]\n' "${0##*/}" >&2; exit 2; }
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --dry-run|-n) DRY=1 ;;
+    --profile)    [ $# -ge 2 ] || usage; PROFILE=$2; shift ;;
+    --profile=*)  PROFILE=${1#--profile=} ;;
+    *)            usage ;;
+  esac
+  shift
+done
+valid_profile() { case "$1" in laptop|desktop) [ -f "$REPO/config/sway/profile/$1" ] ;; *) false ;; esac; }
+if [ -n "$PROFILE" ]; then
+  valid_profile "$PROFILE" || { printf 'unknown profile: %s\n' "$PROFILE" >&2; usage; }
+else
+  # Keep the profile already linked, if it still exists; else guess.
+  current=$(readlink "$HOME/.config/sway/profile" 2>/dev/null || true)
+  case "$current" in "$REPO"/config/sway/profile/*) PROFILE=${current##*/} ;; esac
+  if ! valid_profile "$PROFILE"; then
+    if compgen -G '/sys/class/power_supply/BAT*' >/dev/null; then PROFILE=laptop; else PROFILE=desktop; fi
+  fi
+fi
 
 # repo-relative path  ->  live path. The config/ subtree mirrors ~/.config;
 # the rest are home dotfiles with irregular names, so the mapping is explicit.
@@ -40,6 +64,7 @@ MAP=(
   "sshconfig               $HOME/.ssh/config"
   "gpg-agent.conf          $HOME/.gnupg/gpg-agent.conf"
   "config/sway/config      $HOME/.config/sway/config"
+  "config/sway/profile/$PROFILE  $HOME/.config/sway/profile"
   "config/gammastep/config.ini  $HOME/.config/gammastep/config.ini"
   "config/kanshi/config    $HOME/.config/kanshi/config"
   "config/swaylock/config  $HOME/.config/swaylock/config"
@@ -157,7 +182,7 @@ copy_skill() {
   return 0
 }
 
-printf 'Linking dotfiles from %s%s\n' "$REPO" "$([ "$DRY" -eq 1 ] && echo '  (dry run)')"
+printf 'Linking dotfiles from %s (profile %s)%s\n' "$REPO" "$PROFILE" "$([ "$DRY" -eq 1 ] && echo '  (dry run)')"
 for entry in "${MAP[@]}"; do
   read -r repo_path live_path <<< "$entry"
   link "$repo_path" "$live_path"

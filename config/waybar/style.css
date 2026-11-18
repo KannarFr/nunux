@@ -95,6 +95,9 @@ button:hover {
 #custom-cpu-load,
 #custom-cpu-temp,
 #custom-fan,
+#custom-fans,
+#custom-gpu,
+#custom-link,
 #custom-power-draw,
 #custom-vpn,
 #language {
@@ -220,6 +223,25 @@ label:focus {
 #custom-fan.fan-mid     { background-color: #b8a020; }
 #custom-fan.fan-loud    { background-color: #cc6a1a; }
 #custom-fan.fan-unknown { background-color: #4b5563; }
+
+/* desktop.jsonc tiles. fans.sh reuses the laptop fan classes (plus
+   fan-stopped); gpu.sh the CPU temperature classes (plus gpu-error). */
+#custom-fans.fan-quiet   { background-color: #3a8a3a; }
+#custom-fans.fan-mid     { background-color: #b8a020; }
+#custom-fans.fan-loud    { background-color: #cc6a1a; }
+#custom-fans.fan-unknown { background-color: #4b5563; }
+#custom-fans.fan-stopped { background-color: #c83232; }
+
+#custom-gpu.t-cool { background-color: #3a6ea5; }
+#custom-gpu.t-mild { background-color: #3a8a3a; }
+#custom-gpu.t-warm { background-color: #b8a020; }
+#custom-gpu.t-hot  { background-color: #cc6a1a; }
+#custom-gpu.t-crit { background-color: #c83232; }
+#custom-gpu.gpu-error { background-color: #c83232; }
+
+#custom-link.link-ok   { background-color: #2980b9; }
+#custom-link.link-slow { background-color: #cc6a1a; }
+#custom-link.link-down { background-color: #f53c3c; }
 
 #custom-power-draw.charging    { background-color: #3a8a3a; }
 #custom-power-draw.discharging { background-color: #b8a020; }
