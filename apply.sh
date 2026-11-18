@@ -114,6 +114,16 @@ link() {
   fi
 
   local parent; parent="$(dirname "$dst")"
+  # An older layout linked whole directories (~/.claude/commands -> the repo's
+  # claude/commands). Through such a parent, $dst IS the repo file: moving it
+  # to .bak and linking it to itself replaced the tracked file with a
+  # self-referential symlink (seen on ocean, 2026-11-18). Stop and say so.
+  case "$(realpath -m "$parent")/" in
+    "$REPO"/*)
+      printf '  SKIP  %s (%s is a symlink into this repo: replace it with a real directory, then re-run)\n' \
+        "${dst/#$HOME/\~}" "${parent/#$HOME/\~}"
+      return 0 ;;
+  esac
   if [ "$DRY" -eq 0 ]; then
     mkdir -p "$parent"
     # gpg/ssh refuse a homedir more permissive than 700; mkdir honors umask (755)
