@@ -13,6 +13,8 @@ iwgtk
 osquery-bin
 slack-desktop
 teams-for-linux
+terraform-docs-bin
+tfsort
 vban-git
 wifiman-desktop
 yay

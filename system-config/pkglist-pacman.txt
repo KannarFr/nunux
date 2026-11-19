@@ -82,6 +82,7 @@ lvm2
 man-db
 maven
 mise
+mpv
 mtr
 nautilus
 net-tools
@@ -97,6 +98,7 @@ openblas
 openjdk-src
 openjdk21-src
 openssh
+opentofu
 otf-font-awesome
 otf-latin-modern
 pass
@@ -142,6 +144,7 @@ texlive-fontsrecommended
 texlive-latex
 texlive-latexextra
 texlive-plaingeneric
+tflint
 thunderbird
 tig
 tigervnc
