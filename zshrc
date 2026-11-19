@@ -149,6 +149,10 @@ alias ll='ls -alFh'
 alias mtmux='/home/kannar/git/kannar/nunux/mtmux'
 # k: open Claude in the general-advisor repo (~/git/kannar/kannar); args go to claude (k -c, k "question")
 k() { cd ~/git/kannar/kannar && claude "$@" }
+# same for the other main repos: m myle, a axo, n nunux
+m() { cd ~/git/myle && claude "$@" }
+a() { cd ~/git/cc/axo && claude "$@" }
+n() { cd ~/git/kannar/nunux && claude "$@" }
 
 # Google Workspace CLI: one config dir (OAuth client + token) per account,
 # picked from where the command runs — the Clever Cloud account under ~/git/cc,
