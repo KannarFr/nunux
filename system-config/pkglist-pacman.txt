@@ -101,6 +101,7 @@ openssh
 opentofu
 otf-font-awesome
 otf-latin-modern
+pacman-contrib
 pass
 pavucontrol
 pinentry-bemenu
