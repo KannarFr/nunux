@@ -208,15 +208,13 @@ unlock() {
 	# The key crosses on stdin and is never written on the VM.
 	r "mountpoint -q $RHOME && { echo 'already unlocked'; exit 0; }
 		[ -e /dev/mapper/kannar-home ] || cryptsetup open --key-file - --allow-discards /data/kannar-home.luks kannar-home
-		mount -o discard,nodev,nosuid /dev/mapper/kannar-home $RHOME && echo unlocked
-		[ ! -f $RHOME/.swap ] || swapon $RHOME/.swap" <"$KEY"
+		mount -o discard,nodev,nosuid /dev/mapper/kannar-home $RHOME && echo unlocked" <"$KEY"
 }
 
 lock() {
 	# Drop kannar's multiplexed connection first: its shell would hold the mount busy.
 	ssh -O exit -l kannar "$HOST" 2>/dev/null || true
 	r "pkill -u kannar tmux; sleep 1
-		! swapon --show=NAME --noheadings | grep -qx $RHOME/.swap || swapoff $RHOME/.swap
 		! mountpoint -q $RHOME || umount $RHOME; [ ! -e /dev/mapper/kannar-home ] || cryptsetup close kannar-home; echo locked"
 }
 
