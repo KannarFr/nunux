@@ -90,6 +90,8 @@ MAP=(
   "config/systemd/user/weekly-report-nag.timer    $HOME/.config/systemd/user/weekly-report-nag.timer"
   "config/systemd/user/mail-archive.service   $HOME/.config/systemd/user/mail-archive.service"
   "config/systemd/user/mail-archive.timer     $HOME/.config/systemd/user/mail-archive.timer"
+  "config/systemd/user/gitlab-mail-hourly.service  $HOME/.config/systemd/user/gitlab-mail-hourly.service"
+  "config/systemd/user/gitlab-mail-hourly.timer    $HOME/.config/systemd/user/gitlab-mail-hourly.timer"
   "claude/statusline.sh    $HOME/.claude/statusline.sh"
   "claude/settings.json    $HOME/.claude/settings.json"
   "claude/WS1.md           $HOME/.claude/WS1.md"

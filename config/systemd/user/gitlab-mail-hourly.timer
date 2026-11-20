@@ -1,0 +1,11 @@
+[Unit]
+Description=hourly /gitlab-mail triage
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=5m
+# Catch up once after a suspend or a boot that skipped the hour.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

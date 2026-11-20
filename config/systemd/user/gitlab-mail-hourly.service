@@ -1,0 +1,12 @@
+[Unit]
+Description=hourly GitLab notification mail triage (/gitlab-mail)
+After=network-online.target
+
+[Service]
+Type=oneshot
+Nice=10
+TimeoutStartSec=15min
+# Optional long-lived login for unattended runs (`claude setup-token`), as
+# CLAUDE_CODE_OAUTH_TOKEN=...; chmod 600. Without it the interactive login is used.
+EnvironmentFile=-%h/.local/share/claude-oauth.env
+ExecStart=%h/git/kannar/nunux/bin/gitlab-mail-hourly

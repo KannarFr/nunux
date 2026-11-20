@@ -1,0 +1,24 @@
+#!/bin/sh
+# Hourly /gitlab-mail triage: a headless Claude marks read the GitLab
+# notification mails that don't need kannar (the rule lives in the skill,
+# ~/.claude/skills/gitlab-mail/SKILL.md). Fired by gitlab-mail-hourly.timer.
+# Skips quietly (exit 0) when offline or when Claude can't run (not logged in,
+# usage limit): the next hour retries. Output goes to the journal:
+#   journalctl --user -u gitlab-mail-hourly.service -e
+
+skill="$HOME/.claude/skills/gitlab-mail"
+[ -f "$skill/SKILL.md" ] || { echo "no gitlab-mail skill, skipping"; exit 0; }
+
+online() { timeout 5 bash -c "</dev/tcp/$1/$2" 2>/dev/null; }
+online imap.gmail.com 993 && online api.anthropic.com 443 || { echo "offline, skipping"; exit 0; }
+
+work="$XDG_RUNTIME_DIR/gitlab-mail"
+mkdir -p "$work"
+cd "$skill" || exit 0
+
+claude -p --model sonnet \
+	--allowedTools "Bash(python3 fetch.py:*)" "Bash(python3 mark.py:*)" "Read" \
+	-- "/gitlab-mail
+Run unattended: put threads.json at $work/threads.json, run the scripts from the current directory, apply the rule without asking, and end with the summary (marked count and keep list)." \
+	|| echo "claude failed (exit $?), skipping until next hour"
+exit 0
