@@ -97,6 +97,8 @@ MAP=(
   "claude/agents           $HOME/.claude/agents"
   "claude/hooks            $HOME/.claude/hooks"
   "claude/skills/can-i-close  $HOME/.claude/skills/can-i-close"
+  "claude/skills/ask          $HOME/.claude/skills/ask"
+  "claude/skills/state        $HOME/.claude/skills/state"
   "codex/config.toml       $HOME/.codex/config.toml"
   "codex/hooks             $HOME/.codex/hooks"
 )
