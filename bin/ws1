@@ -46,6 +46,12 @@ KEY="${XDG_DATA_HOME:-$HOME/.local/share}/ws1-home.key"
 RHOME=/home/kannar
 RUNS=.ws1/runs                      # under kannar's home
 CLAUDE=$RHOME/.local/bin/claude
+# Agents run on a Claude subscription borrowed from the team registry (`aisub run`, ai-subscriptions):
+# the registry picks one with quota left. Since 2026-11-23, when the API key ws1 used (apiKeyHelper, now
+# removed from ws1's ~/.claude/settings.json, backup settings.json.bak-20261123-avant-aisub) hit its rate
+# limit. `aisub login --scope automation --label ws1` was approved on the registry. WS1_AISUB=0 runs
+# claude bare (it then needs its own credentials on ws1).
+AISUB=$RHOME/.local/bin/aisub
 # Busy = the host would slow the work down more than this laptop would.
 MAX_LOAD_PER_CORE=0.75
 MIN_MEM_AVAIL_PCT=20
@@ -180,7 +186,9 @@ run() {
 	# unprivileged user on a disposable VM, holding no credentials but Claude's.
 	# The tmux server on socket ws1 is started in $SLICE, so every session it
 	# forks is counted there too.
-	local cmd="cd $cwd && env $RUN_ENV TMPDIR=$abs/tmp $CLAUDE -p --permission-mode bypassPermissions <$abs/brief >$abs/out 2>$abs/err; echo \$? >$abs/rc"
+	local launcher=""
+	[ "${WS1_AISUB:-1}" = 0 ] || launcher="$AISUB run --provider claude --job ws1-agent --"
+	local cmd="cd $cwd && env $RUN_ENV TMPDIR=$abs/tmp $launcher $CLAUDE -p --permission-mode bypassPermissions <$abs/brief >$abs/out 2>$abs/err; echo \$? >$abs/rc"
 	local start="tmux -L ws1 new-session -d -s ws1-$id -c $cwd $(printf '%q' "$cmd")"
 	printf '%s' "$brief$BUDGET" | u "set -e; mkdir -p $d/tmp; cat >$d/brief; echo $cwd >$d/dir; printf '%s\n' $(printf '%q' "$start") >$d/start"
 	r "$(in_slice) $abs/start" || die "could not start run $id"
