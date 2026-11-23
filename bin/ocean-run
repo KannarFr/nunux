@@ -6,6 +6,18 @@
 #   ocean-run sync              copy the current git tree (tracked + untracked-but-not-ignored files)
 #                               to ocean:~/<same path relative to $HOME>
 #   ocean-run exec '<command>'  sync, then run the command there, in the same subdirectory
+#   ocean-run run [--wait] -    sync, then start a headless Claude agent there on the brief read from
+#                               stdin, in the same subdirectory, on a Claude subscription borrowed from the
+#                               team registry (`aisub run --provider claude`); prints the run id, or with
+#                               --wait waits and prints the agent's final answer
+#   ocean-run wait <id>         wait for a run, then print its answer (exit = the agent's exit code)
+#   ocean-run result <id>       print a finished run's answer
+#   ocean-run ls                list the runs and their state
+#
+# Agents run one at a time (ocean also serves MyleAI on its GPU and OOMed on 2026-11-07 with several
+# heavy jobs): `run` queues, polling every 30 s, while another agent is active. Each agent is a transient
+# user service (`systemd-run --user`, linger is on) under the same caps as `exec`, so it survives the ssh
+# session; its files are in ocean:~/.ocean/runs/<id> (brief, out, err, rc).
 #
 # Java 21 is forced: ocean's default JDK (27) is too new for sbt/Play.
 # The copy is tar over ssh (no rsync on lagoon): files deleted here stay there.
@@ -15,6 +27,17 @@ top=$(git rev-parse --show-toplevel)
 sub=$(git rev-parse --show-prefix)
 remote=${top#"$HOME"/}
 [[ "$remote" == "$top" ]] && { echo "ocean-run: $top is not under \$HOME" >&2; exit 2; }
+
+# Appended to every agent brief: ocean is the user's desktop and serves production (MyleAI on the GPU,
+# Home Assistant), so the agent must stay small.
+BUDGET='
+
+---
+ocean resource budget (this machine also serves production): you run inside a systemd scope capped at
+12.8 cores and 16G. One heavy job at a time: one sbt (one module), jest --maxWorkers=4, cargo with 8 jobs,
+never two test suites in parallel. Docker works (testcontainers) but never touch, stop or restart the
+containers already running there (ollama, homeassistant, mosquitto…) nor the docker daemon, and never use
+the GPU. Nothing big in /tmp: use $TMPDIR. Do not push.'
 
 sync() {
 	ssh ocean "mkdir -p ~/$(printf %q "$remote")"
@@ -31,5 +54,41 @@ case "${1:-}" in
 		ssh ocean "cd ~/$(printf %q "$remote/$sub") && export JAVA_HOME=$jdk PATH=$jdk/bin:\$PATH && \
 			systemd-run --user --scope --quiet -p CPUQuota=1280% -p MemoryMax=16G nice -n 10 bash -c $(printf %q "$*")"
 		;;
-	*) sed -n '2,11p' "$0"; exit 2 ;;
+	run)
+		shift
+		wait=0
+		[[ "${1:-}" == --wait ]] && { wait=1; shift; }
+		[[ "${1:-}" == - ]] || { echo "ocean-run run: the brief is read from stdin: ocean-run run [--wait] -" >&2; exit 2; }
+		brief=$(cat)
+		[[ -n "$brief" ]] || { echo "ocean-run run: empty brief" >&2; exit 2; }
+		while ssh ocean 'systemctl --user list-units --state=active --no-legend "ocean-agent-*" | grep -q .'; do
+			echo "queued: another agent is running on ocean (one at a time)" >&2
+			sleep 30
+		done
+		sync
+		id="$(date +%s)-$RANDOM"
+		jdk=/usr/lib/jvm/java-21-openjdk
+		cwd="~/$(printf %q "$remote/$sub")"
+		printf '%s%s' "$brief" "$BUDGET" | ssh ocean "set -e; d=~/.ocean/runs/$id; mkdir -p \$d/tmp; cat >\$d/brief; echo $cwd >\$d/dir"
+		ssh ocean "cd $cwd && d=\$HOME/.ocean/runs/$id && systemd-run --user --quiet --collect --unit=ocean-agent-$id \
+			-p CPUQuota=1280% -p MemoryMax=16G -p Nice=10 --working-directory=\$PWD \
+			-E JAVA_HOME=$jdk -E PATH=$jdk/bin:\$HOME/.local/bin:\$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin \
+			-E HOME=\$HOME -E TMPDIR=\$d/tmp -E CARGO_BUILD_JOBS=8 -E RUST_TEST_THREADS=8 \
+			bash -c \"\$HOME/.local/bin/aisub run --provider claude --job ocean-agent -- /usr/bin/claude -p --permission-mode bypassPermissions <\$d/brief >\$d/out 2>\$d/err; echo \\\$? >\$d/rc\""
+		echo "$id"
+		((wait)) && exec "$0" wait "$id"
+		;;
+	wait)
+		id=${2:?ocean-run wait <id>}
+		until ssh ocean "test -f ~/.ocean/runs/$id/rc"; do sleep 30; done
+		exec "$0" result "$id"
+		;;
+	result)
+		id=${2:?ocean-run result <id>}
+		ssh ocean "d=~/.ocean/runs/$id; test -f \$d/rc || { echo 'ocean-run: run $id is not finished' >&2; exit 3; }; cat \$d/out; rc=\$(cat \$d/rc); [ \$rc = 0 ] || tail -5 \$d/err >&2; exit \$rc"
+		;;
+	ls)
+		ssh ocean 'for d in ~/.ocean/runs/*/; do [ -d "$d" ] || continue; id=$(basename "$d"); if [ -f "$d/rc" ]; then st="exit $(cat "$d/rc")"; elif systemctl --user is-active -q "ocean-agent-$id"; then st=running; else st=died; fi; printf "%s\t%s\t%s\n" "$id" "$st" "$(cat "$d/dir")"; done'
+		;;
+	*) sed -n '2,24p' "$0"; exit 2 ;;
 esac
