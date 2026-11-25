@@ -30,22 +30,34 @@ Exactly this shape, nothing before it, each line short:
 
 **TL;DR** : <1-2 phrases : où on en est vraiment>
 
-**Fait**
-- <résultat concret, avec la preuve courte : commit, MR !123, déployé, testé>
+**Index**
+1. <sujet> — <issue / MR en lien cliquable>
+2. …
+
+| # | Sujet | État actuel | Attendu | Qui / bloqué par |
+|---|---|---|---|---|
+| 1 | <sujet> | <ce qui est vrai maintenant, avec la preuve courte : MR !123 mergée, déployé `abc1234`, en draft> | <l'état final visé> | <moi, toi, @personne, ou ce qui bloque> |
 
 **En cours / en attente**
-- <ce qui tourne ou attend quelqu'un, et qui/quoi>
+- <ce qui tourne (agents, shells, trains) ou attend une décision, et qui/quoi>
 
 **Prochain pas** : <la prochaine action, et qui la fait : moi ou toi>
 ```
 
 Rules:
 
-- Leave out an empty section rather than writing « rien ». Max ~4 bullets per section: merge the
-  rest.
-- Uncommitted or unpushed work, a running agent, or a promise not kept: say it, it is what gets
-  lost when a session is closed.
-- If the session wandered across several subjects, list them in **Session** in order, the current
-  one last.
+- **Index and table, always**, even for a single subject: one row per subject, same numbers in
+  both. A subject is what the user would name (an issue, an incident, a feature), not each MR:
+  group the MRs of one subject in its row.
+- **Current vs expected** is the point of the table: « État actuel » says what is true now, from
+  evidence (merged, deployed sha, draft, waiting on X since <date>); « Attendu » says the end state
+  the user asked for, so the gap is visible. A finished subject keeps its row, with « Attendu »
+  reached (« = fait »), until the session is closed.
+- Links: issues and MRs as clickable links (full URL, or the forge's short form when the
+  terminal renders it), so the index doubles as navigation.
+- Uncommitted or unpushed work, a running agent, or a promise not kept: say it in the row and in
+  « En cours », it is what gets lost when a session is closed.
+- Leave out an empty section rather than writing « rien ». Merge bullets past ~4 per section.
 - Keep the user's own vocabulary (issue numbers, entity names, French terms they used).
+- An argument after `/state` (e.g. a format request) adjusts this shape for that answer.
 - Do not continue the work after the status; wait for the user.
