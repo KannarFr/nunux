@@ -122,6 +122,13 @@ def ecran(allumer: bool) -> None:
     subprocess.run(["xset", "dpms", "force", "on" if allumer else "off"], check=False)
 
 
+def sans_economiseur() -> None:
+    # L'économiseur interne de X revient à 600 s malgré le `xset s off` de l'autostart (vu le 2026-11-25) ;
+    # actif, il cache Chromium, qui cesse de peindre : l'heure de la veille HA se fige jusqu'au toucher.
+    subprocess.run(["xset", "s", "off", "s", "noblank"], check=False)
+    subprocess.run(["xset", "s", "reset"], check=False)
+
+
 def main() -> None:
     import evdev
     import paho.mqtt.client as mqtt
@@ -189,6 +196,8 @@ def main() -> None:
     while True:
         time.sleep(1)
         appliquer("tic")
+        if secondes % 60 == 0:
+            sans_economiseur()
         if secondes % 60 == 0 and (b := lire_batterie(ALIMENTATION)) is not None:
             client.publish(PREFIXE + "batterie", json.dumps(b), retain=True)
         secondes += 1
