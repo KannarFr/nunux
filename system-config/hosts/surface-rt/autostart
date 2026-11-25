@@ -1,0 +1,5 @@
+@xset s off
+@xset s noblank
+@xset dpms 0 0 0
+@unclutter -idle 1 -root
+@/usr/local/lib/ecran-salon/kiosque.sh

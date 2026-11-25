@@ -58,6 +58,7 @@ Snapshots / not symlinked (read-only references; do not assume edits here propag
 | Repo path | Source |
 |---|---|
 | `system-config/system/*` | `/etc/*` (root-owned originals; copy by hand if changed) |
+| `system-config/hosts/surface-rt/*` | not linked: the Home Assistant wall-screen kiosk of a Surface RT running Raspberry Pi OS (Debian armhf, X11), copied to the tablet and installed by its own `apply` run there as root over ssh (`README.md` in that folder: what goes where, the secrets kept out of this public repo in the tablet's `/etc/ecran-salon.env`, the pinned X11 session and the held Raspberry Pi kernel packages). `ecran_mqtt.py` has its own tests (`python -m pytest -q system-config/hosts/surface-rt`). |
 | `paludis-config/*` | `/etc/paludis/*` — Paludis is the Exherbo package manager. Current host is Arch, so this dir is likely archival from a prior install. |
 | `kernelconfig` | `/usr/src/linux/.config` — kernel build snapshot |
 | `mtmux`, `doc/` | utility script + ad-hoc notes; live where they are |

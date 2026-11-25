@@ -20,6 +20,14 @@ Host pacific
   HostName 10.0.0.14
   User kannar
 
+# Surface RT, écran mural de la salle à manger (Wi-Fi « Automation », IP fixe UniFi). One key only:
+# the agent offers 7 and its sshd hangs up after 6 (system-config/hosts/surface-rt/README.md).
+Host ecran-salon
+  HostName 10.10.90.100
+  User kannar
+  IdentityFile ~/.ssh/id_ed25519
+  IdentitiesOnly yes
+
 Host aur.archlinux.org
   User aur
   IdentityFile ~/.ssh/aur

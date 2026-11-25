@@ -1,0 +1,18 @@
+[Unit]
+Description=ecran-mqtt : écran de la Surface piloté par Home Assistant (MQTT)
+After=network-online.target graphical.target
+Wants=network-online.target
+ConditionPathExists=/etc/ecran-salon.env
+
+[Service]
+User=kannar
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/kannar/.Xauthority
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+EnvironmentFile=/etc/ecran-salon.env
+ExecStart=/usr/bin/python3 /usr/local/lib/ecran-salon/ecran_mqtt.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=graphical.target

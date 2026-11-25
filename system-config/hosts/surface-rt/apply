@@ -1,0 +1,57 @@
+#!/bin/bash
+# Installe ou met à jour le kiosque Home Assistant de la Surface RT. Idempotent, à lancer en root SUR la
+# tablette, depuis une copie de ce dossier (voir README.md) :
+#   scp -r system-config/hosts/surface-rt ecran-salon:/tmp/ && ssh ecran-salon 'sudo bash /tmp/surface-rt/apply'
+# Les clips d'alerte (privés, dans le repo kannar) sont copiés à côté, dans sons/, avant de lancer.
+# Secrets hors repo : /etc/ecran-salon.env (MQTT_*, TACTILE), posé à la main, mode 600.
+set -euo pipefail
+ICI=$(cd "$(dirname "$0")" && pwd)
+URL_TABLEAU=${URL_TABLEAU:-http://10.0.0.151:8123/wallscreen-salon}
+UTILISATEUR=${UTILISATEUR:-kannar}
+LIB=/usr/local/lib/ecran-salon
+PARTAGE=/usr/local/share/ecran-salon
+[ "$(id -u)" -eq 0 ] || { echo "à lancer en root" >&2; exit 1; }
+
+echo "== paquets"
+export DEBIAN_FRONTEND=noninteractive
+apt-get install -y --no-install-recommends chromium unclutter x11-xserver-utils \
+  python3-paho-mqtt python3-evdev pipewire-bin fonts-noto-color-emoji >/dev/null
+
+echo "== session X11 en connexion automatique (pas wayfire ni labwc)"
+CONF=/etc/lightdm/lightdm.conf
+sed -i -E "s/^#?autologin-user=.*/autologin-user=$UTILISATEUR/; s/^#?autologin-session=.*/autologin-session=LXDE-pi-x/; s/^#?user-session=.*/user-session=LXDE-pi-x/" "$CONF"
+grep -q '^autologin-session=LXDE-pi-x' "$CONF" || { echo "lightdm.conf : autologin-session introuvable" >&2; exit 1; }
+systemctl set-default graphical.target >/dev/null
+
+echo "== jamais de mise en veille (le Wi-Fi mwifiex ne revient pas après une veille : vu le 2026-11-24)"
+systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target >/dev/null
+install -d /etc/systemd/logind.conf.d
+printf '[Login]\nHandleLidSwitch=ignore\nHandleSuspendKey=ignore\nHandlePowerKey=ignore\nIdleAction=ignore\n' \
+  > /etc/systemd/logind.conf.d/50-ecran-salon.conf
+
+echo "== fichiers"
+install -d -m 755 "$LIB" "$PARTAGE/sons"
+install -m 755 "$ICI/kiosque.sh" "$LIB/kiosque.sh"
+install -m 644 "$ICI/ecran_mqtt.py" "$LIB/ecran_mqtt.py"
+printf '%s\n' "$URL_TABLEAU" > /etc/ecran-salon.url
+if [ -d "$ICI/sons" ]; then
+  install -m 644 "$ICI"/sons/*.mp3 "$PARTAGE/sons/"
+fi
+install -d -o "$UTILISATEUR" -g "$UTILISATEUR" "/home/$UTILISATEUR/.config/lxsession/LXDE-pi"
+install -m 644 -o "$UTILISATEUR" -g "$UTILISATEUR" "$ICI/autostart" "/home/$UTILISATEUR/.config/lxsession/LXDE-pi/autostart"
+install -D -m 644 "$ICI/journald.conf" /etc/systemd/journald.conf.d/50-ecran-salon.conf
+install -m 644 "$ICI/ecran-mqtt.service" /etc/systemd/system/ecran-mqtt.service
+usermod -aG input,audio "$UTILISATEUR"
+
+echo "== services"
+systemctl restart systemd-journald
+systemctl daemon-reload
+if [ -f /etc/ecran-salon.env ]; then
+  chmod 600 /etc/ecran-salon.env
+  systemctl enable ecran-mqtt.service >/dev/null
+  systemctl restart ecran-mqtt.service
+  echo "ecran-mqtt : $(systemctl is-active ecran-mqtt.service)"
+else
+  echo "/etc/ecran-salon.env absent : ecran-mqtt pas activé (voir README.md)"
+fi
+echo "OK ; redémarrer la tablette pour la session kiosque (sudo reboot)"
