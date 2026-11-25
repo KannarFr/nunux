@@ -270,3 +270,4 @@ export PATH=/home/kannar/.opencode/bin:$PATH
 # axo internal crate map (/axo/crates/internal-map). The secret lives outside this
 # repository on purpose — this file is tracked and pushed to GitHub.
 [ -f "$HOME/.config/axo/internal-map.env" ] && source "$HOME/.config/axo/internal-map.env"
+[ -f "$HOME/.local/share/aisub/completions/aisub.zsh" ] && . "$HOME/.local/share/aisub/completions/aisub.zsh"
