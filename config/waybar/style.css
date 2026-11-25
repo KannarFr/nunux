@@ -100,6 +100,7 @@ button:hover {
 #custom-link,
 #custom-power-draw,
 #custom-vpn,
+#custom-agenda,
 #language {
     padding: 0 10px;
     color: #ffffff;
@@ -392,3 +393,9 @@ label:focus {
 #privacy-item.audio-out {
     background-color: #0069d4;
 }
+
+/* custom/agenda: next meeting (agenda.py). Hidden when it has nothing to say. */
+#custom-agenda.upcoming { background-color: #2980b9; }
+#custom-agenda.soon     { background-color: #cc6a1a; }
+#custom-agenda.now      { background-color: #3a8a3a; }
+#custom-agenda.tomorrow { background-color: #4b5563; }

@@ -32,6 +32,7 @@
         "custom/fan",
         "battery",
         "custom/power-draw",
+        "custom/agenda",
         "clock",
         "tray",
         "custom/power"

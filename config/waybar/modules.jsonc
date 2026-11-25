@@ -179,6 +179,16 @@
         "format-alt-click": "click-right", // left click opens iwgtk
         "on-click": "iwgtk"
     },
+    "custom/agenda": {
+        // Next meeting from the Google secret iCal feeds in ~/.config/agenda/urls
+        // (see agenda.py). Empty text hides the tile.
+        "exec": "$HOME/.local/bin/uv run -q --script $HOME/.config/waybar/agenda.py",
+        "return-type": "json",
+        "interval": 30,
+        "format": "{}",
+        "tooltip": true,
+        "on-click": "$HOME/.local/bin/uv run -q --script $HOME/.config/waybar/agenda.py open"
+    },
     "custom/vpn": {
         "exec": "$HOME/.config/waybar/vpn.sh",
         "return-type": "json",
