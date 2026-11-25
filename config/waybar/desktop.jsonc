@@ -30,6 +30,7 @@
         "memory#zram",
         "disk",
         "custom/fans",
+        "custom/agenda",
         "clock",
         "tray",
         "custom/power"
