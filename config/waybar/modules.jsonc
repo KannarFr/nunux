@@ -181,7 +181,7 @@
     },
     "custom/agenda": {
         // Next meeting from the Google secret iCal feeds in ~/.config/agenda/urls
-        // (see agenda.py). Empty text hides the tile.
+        // (see agenda.py). Hover: today and the next two days as columns.
         "exec": "$HOME/.local/bin/uv run -q --script $HOME/.config/waybar/agenda.py",
         "return-type": "json",
         "interval": 30,
