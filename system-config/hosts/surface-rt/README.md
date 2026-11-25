@@ -9,7 +9,7 @@ d'Open RT sur l'eMMC), en kiosque sur un tableau Home Assistant. Ce dossier n'es
 | `apply` | installe tout, idempotent (root) | lancé depuis `/tmp/surface-rt/` |
 | `kiosque.sh` | Chromium `--kiosk` sur l'URL, relancé 5 s après sa sortie | `/usr/local/lib/ecran-salon/` |
 | `autostart` | session X11 : pas d'économiseur ni de DPMS auto, curseur caché, kiosque | `~/.config/lxsession/LXDE-pi/autostart` |
-| `ecran_mqtt.py`, `ecran-mqtt.service` | écran allumé / éteint par HA en MQTT, toucher, sons d'alerte | `/usr/local/lib/ecran-salon/`, `/etc/systemd/system/` |
+| `ecran_mqtt.py`, `ecran-mqtt.service` | écran allumé / éteint par HA en MQTT, toucher, sons d'alerte, batterie publiée chaque minute (`ecran/salon/batterie`) | `/usr/local/lib/ecran-salon/`, `/etc/systemd/system/` |
 | `journald.conf` | journal plafonné à 50 Mo (eMMC) | `/etc/systemd/journald.conf.d/50-ecran-salon.conf` |
 | `test_ecran_mqtt.py` | tests de la logique (`python -m pytest -q`) | — |
 

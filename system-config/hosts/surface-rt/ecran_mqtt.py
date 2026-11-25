@@ -7,6 +7,8 @@ Contrat MQTT (préfixe ecran/salon/) :
   contexte  HA -> tablette   {"vide": bool, "alerte": bool} (retenu)
   dispo     tablette -> HA   online / offline (retenu, LWT)
   son       HA -> tablette   nom d'un clip de SONS (personne_jour…) ou « stop »
+  batterie  tablette -> HA   {"capacite", "etat", "secteur", "courant_a", "tension_v"} (retenu, toutes
+                             les minutes) : elle s'est éteinte batterie vide le 2026-11-25
 
 Un toucher rallume l'écran (X le fait déjà de lui-même) ; si la pièce est vide et qu'aucune alerte
 n'est affichée, l'écran se rééteint 60 s après le dernier toucher. Sans contexte (HA ou broker
@@ -29,6 +31,7 @@ from pathlib import Path
 
 PREFIXE = "ecran/salon/"
 SONS = Path("/usr/local/share/ecran-salon/sons")
+ALIMENTATION = Path("/sys/class/power_supply")
 DELAI_REXTINCTION = 60
 NOM_CLIP = re.compile(r"^[a-z0-9_]+$")
 
@@ -102,6 +105,19 @@ class Lecteur:
         self.processus = None
 
 
+def lire_batterie(dossier: Path) -> dict | None:
+    """La batterie et le chargeur de la Surface RT (pilotes surface-rt-battery / surface-rt-ac-adapter)."""
+    bat, sec = dossier / "surface-rt-battery", dossier / "surface-rt-ac-adapter"
+    try:
+        lire = lambda f: (bat / f).read_text().strip()
+        return {"capacite": int(lire("capacity")), "etat": lire("status"),
+                "secteur": (sec / "online").read_text().strip() == "1",
+                "courant_a": round(int(lire("current_now")) / 1e6, 3),
+                "tension_v": round(int(lire("voltage_now")) / 1e6, 3)}
+    except (OSError, ValueError):
+        return None
+
+
 def ecran(allumer: bool) -> None:
     subprocess.run(["xset", "dpms", "force", "on" if allumer else "off"], check=False)
 
@@ -169,9 +185,13 @@ def main() -> None:
     ecran(True)
     client.connect_async(env.get("MQTT_HOTE", "10.0.0.151"), int(env.get("MQTT_PORT", "1883")))
     client.loop_start()
+    secondes = 0
     while True:
         time.sleep(1)
         appliquer("tic")
+        if secondes % 60 == 0 and (b := lire_batterie(ALIMENTATION)) is not None:
+            client.publish(PREFIXE + "batterie", json.dumps(b), retain=True)
+        secondes += 1
 
 
 if __name__ == "__main__":

@@ -95,3 +95,21 @@ def test_stop_coupe_le_son():
     second.wait(timeout=5)
     assert second.poll() is not None
     assert lecteur.processus is None
+
+
+def test_lire_batterie(tmp_path: Path):
+    from ecran_mqtt import lire_batterie
+    bat = tmp_path / "surface-rt-battery"
+    sec = tmp_path / "surface-rt-ac-adapter"
+    bat.mkdir()
+    sec.mkdir()
+    for f, v in {"capacity": "42", "status": "Charging", "current_now": "1873000", "voltage_now": "7128000"}.items():
+        (bat / f).write_text(v + "\n")
+    (sec / "online").write_text("1\n")
+    assert lire_batterie(tmp_path) == {"capacite": 42, "etat": "Charging", "secteur": True,
+                                       "courant_a": 1.873, "tension_v": 7.128}
+
+
+def test_lire_batterie_absente(tmp_path: Path):
+    from ecran_mqtt import lire_batterie
+    assert lire_batterie(tmp_path) is None
