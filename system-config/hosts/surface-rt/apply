@@ -29,6 +29,12 @@ install -d /etc/systemd/logind.conf.d
 printf '[Login]\nHandleLidSwitch=ignore\nHandleSuspendKey=ignore\nHandlePowerKey=ignore\nIdleAction=ignore\n' \
   > /etc/systemd/logind.conf.d/50-ecran-salon.conf
 
+echo "== Wi-Fi sans économie d'énergie (le firmware mwifiex a planté avec, le 2026-11-26)"
+install -D -m 644 "$ICI/wifi-sans-economie.conf" /etc/NetworkManager/conf.d/50-ecran-salon-wifi.conf
+# pour la connexion en cours, sans la couper (le fichier vaut pour les suivantes)
+/sbin/iw dev mlan0 set power_save off 2>/dev/null || true
+echo "économie Wi-Fi : $(/sbin/iw dev mlan0 get power_save 2>/dev/null || echo '?')"
+
 echo "== fichiers"
 install -d -m 755 "$LIB" "$PARTAGE/sons"
 install -m 755 "$ICI/kiosque.sh" "$LIB/kiosque.sh"
@@ -41,11 +47,15 @@ install -d -o "$UTILISATEUR" -g "$UTILISATEUR" "/home/$UTILISATEUR/.config/lxses
 install -m 644 -o "$UTILISATEUR" -g "$UTILISATEUR" "$ICI/autostart" "/home/$UTILISATEUR/.config/lxsession/LXDE-pi/autostart"
 install -D -m 644 "$ICI/journald.conf" /etc/systemd/journald.conf.d/50-ecran-salon.conf
 install -m 644 "$ICI/ecran-mqtt.service" /etc/systemd/system/ecran-mqtt.service
+install -m 755 "$ICI/wifi-garde.sh" "$LIB/wifi-garde.sh"
+install -m 644 "$ICI/wifi-garde.service" "$ICI/wifi-garde.timer" /etc/systemd/system/
 usermod -aG input,audio "$UTILISATEUR"
 
 echo "== services"
 systemctl restart systemd-journald
 systemctl daemon-reload
+systemctl enable --now wifi-garde.timer >/dev/null
+echo "wifi-garde : $(systemctl is-active wifi-garde.timer)"
 if [ -f /etc/ecran-salon.env ]; then
   chmod 600 /etc/ecran-salon.env
   systemctl enable ecran-mqtt.service >/dev/null

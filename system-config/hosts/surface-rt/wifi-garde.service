@@ -1,0 +1,6 @@
+[Unit]
+Description=wifi-garde : relance le Wi-Fi, puis redémarre la tablette, si le routeur ne répond plus
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/ecran-salon/wifi-garde.sh

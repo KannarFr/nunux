@@ -11,6 +11,8 @@ d'Open RT sur l'eMMC), en kiosque sur un tableau Home Assistant. Ce dossier n'es
 | `autostart` | session X11 : pas d'économiseur ni de DPMS auto, curseur caché, kiosque | `~/.config/lxsession/LXDE-pi/autostart` |
 | `ecran_mqtt.py`, `ecran-mqtt.service` | écran allumé / éteint par HA en MQTT, toucher, sons d'alerte, batterie publiée chaque minute (`ecran/salon/batterie`) | `/usr/local/lib/ecran-salon/`, `/etc/systemd/system/` |
 | `journald.conf` | journal plafonné à 50 Mo (eMMC) | `/etc/systemd/journald.conf.d/50-ecran-salon.conf` |
+| `wifi-sans-economie.conf` | Wi-Fi sans économie d'énergie (`wifi.powersave = 2`) | `/etc/NetworkManager/conf.d/50-ecran-salon-wifi.conf` |
+| `wifi-garde.sh`, `.service`, `.timer` | chaque minute : routeur injoignable 3 min -> relance du Wi-Fi, 6 min -> redémarrage forcé (sysrq), jamais dans les 10 min après le démarrage ni plus d'une fois par heure | `/usr/local/lib/ecran-salon/`, `/etc/systemd/system/` |
 | `test_ecran_mqtt.py` | tests de la logique (`python -m pytest -q`) | — |
 
 ## Déployer
@@ -41,6 +43,12 @@ changent par l'environnement de `apply`.
   Raspberry Pi sont gelés (`apt-mark hold`), ne servent à rien ici et ne doivent pas être dégelés.
 - **ssh** : l'agent du laptop présente 7 clés et la tablette coupe à 6 essais : l'alias `ecran-salon` de
   `sshconfig` force une seule clé.
+- **Wi-Fi planté sans veille** (2026-11-26, 11:03) : le firmware mwifiex a cessé de répondre (`Timeout cmd id =
+  0xa4`, `FW is in bad state`, `ps_mode=1`), le pilote s'est bloqué en le réinitialisant (`kworker` en état D,
+  `mwifiex_reinit_sw` -> `mwifiex_cleanup_sdio`) : plus de réseau, HA « connexion perdue », jusqu'à un appui
+  long sur Power à 17:50. Depuis : économie d'énergie Wi-Fi coupée, `wifi-garde` redémarre la tablette tout seul,
+  et HA prévient le foyer après 10 min sans réponse (`alertes_salon_injoignable`, repo kannar). Journal :
+  `journalctl -t wifi-garde`.
 - **Veille** : jamais. Le Wi‑Fi (mwifiex) ne revient pas après une mise en veille (vu le 2026-11-24 : plus aucun
   réseau visible au réveil, il faut redémarrer). `apply` masque les cibles de veille et fait ignorer le capot et
   le bouton Power par logind (un appui involontaire n'éteint pas l'écran mural) ; on éteint par le menu ou ssh.
