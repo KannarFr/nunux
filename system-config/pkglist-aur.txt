@@ -10,6 +10,7 @@ gitlab-inbox-bin
 google-chrome
 handy-bin
 iwgtk
+myle-bin
 osquery-bin
 slack-desktop
 teams-for-linux
