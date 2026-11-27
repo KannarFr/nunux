@@ -13,67 +13,159 @@
 #   ocean-run wait <id>         wait for a run, then print its answer (exit = the agent's exit code)
 #   ocean-run result <id>       print a finished run's answer
 #   ocean-run ls                list the runs and their state
+#   ocean-run load              one status line; exit 0 if a new agent would start now, 1 if not, 2 unreachable
 #
-# Agents run one at a time (ocean also serves MyleAI on its GPU and OOMed on 2026-11-07 with several
-# heavy jobs): `run` queues, polling every 30 s, while another agent is active. Each agent is a transient
-# user service (`systemd-run --user`, linger is on) under the same caps as `exec`, so it survives the ssh
+# The cap is a total: every agent and every `exec` runs in one user slice, ocean-agents.slice
+# (CPUQuota=1280%, MemoryHigh=14G, MemoryMax=16G), written by this script on ocean when it differs.
+# Several agents can run at once (since 2026-11-27; one at a time before, after the OOM of 2026-11-07):
+# `run` admits a new one only while ocean has room, else it queues (30 s polls, up to
+# $OCEAN_QUEUE_MAX s, default 7200). Room means all of: fewer than MAX_AGENTS agents, load below
+# MAX_LOAD_PER_CORE of the cores, at least MIN_SLICE_FREE_GB left under the slice's 16G, memory pressure
+# below MAX_MEM_PRESSURE, and no agent admitted in the last 2 minutes (its load does not show yet). The
+# check and the reservation are one step under a lock on ocean, so two `run`s cannot both take the last
+# place. An agent that starts next to others gets half the build jobs (4 instead of 8).
+#
+# Each agent is a transient user service (`systemd-run --user`, linger is on), so it survives the ssh
 # session; its files are in ocean:~/.ocean/runs/<id> (brief, out, err, rc).
 #
+# Docker containers an agent starts (testcontainers) run in docker's own cgroup, outside the slice.
 # Java 21 is forced: ocean's default JDK (27) is too new for sbt/Play.
 # The copy is tar over ssh (no rsync on lagoon): files deleted here stay there.
 set -euo pipefail
 
-top=$(git rev-parse --show-toplevel)
-sub=$(git rev-parse --show-prefix)
+MAX_AGENTS=3                # 16G does not hold more Rust builds
+MAX_LOAD_PER_CORE=0.6       # 75 % of the 80 % allowed
+MIN_SLICE_FREE_GB=6
+MAX_MEM_PRESSURE=10         # /proc/pressure/memory "full avg60", %
+QUEUE_MAX=${OCEAN_QUEUE_MAX:-7200}
+SLICE=ocean-agents.slice
+SLICE_UNIT='[Unit]
+Description=ocean-run agents and exec commands: 80 % of ocean and 16G in total (nunux bin/ocean-run)
+
+[Slice]
+CPUQuota=1280%
+MemoryHigh=14G
+MemoryMax=16G'
+
+top=$(git rev-parse --show-toplevel 2>/dev/null || true)
+sub=$(git rev-parse --show-prefix 2>/dev/null || true)
 remote=${top#"$HOME"/}
-[[ "$remote" == "$top" ]] && { echo "ocean-run: $top is not under \$HOME" >&2; exit 2; }
+
+need_repo() {
+	[[ -n "$top" ]] || { echo "ocean-run: not in a git repo" >&2; exit 2; }
+	[[ "$remote" != "$top" ]] || { echo "ocean-run: $top is not under \$HOME" >&2; exit 2; }
+}
 
 # Appended to every agent brief: ocean is the user's desktop and serves production (MyleAI on the GPU,
-# Home Assistant), so the agent must stay small.
+# Home Assistant), so the agent must stay small. %s: the number of cargo jobs.
 BUDGET='
 
 ---
-ocean resource budget (this machine also serves production): you run inside a systemd scope capped at
-12.8 cores and 16G. One heavy job at a time: one sbt (one module), jest --maxWorkers=4, cargo with 8 jobs,
-never two test suites in parallel. Docker works (testcontainers) but never touch, stop or restart the
-containers already running there (ollama, homeassistant, mosquitto…) nor the docker daemon, and never use
-the GPU. Nothing big in /tmp: use $TMPDIR. Do not push.'
+ocean resource budget (this machine also serves production): you run inside a systemd slice capped at
+12.8 cores and 16G in total, shared with up to %d other agents. One heavy job at a time: one sbt (one
+module), jest --maxWorkers=%d, cargo with %d jobs, never two test suites in parallel. Before a heavy
+command, if "full avg10" in /proc/pressure/memory is above 10, wait for it to drop. Docker works
+(testcontainers) but never touch, stop or restart the containers already running there (ollama,
+homeassistant, mosquitto…) nor the docker daemon, and never use the GPU. Nothing big in /tmp: use $TMPDIR.
+Do not push.'
+
+ensure_slice() {
+	ssh ocean "f=~/.config/systemd/user/$SLICE; mkdir -p \${f%/*}
+		if [ \"\$(cat \$f 2>/dev/null)\" != $(printf %q "$SLICE_UNIT") ]; then
+			printf '%s\n' $(printf %q "$SLICE_UNIT") >\$f && systemctl --user daemon-reload
+		fi"
+}
 
 sync() {
+	need_repo
 	ssh ocean "mkdir -p ~/$(printf %q "$remote")"
 	(cd "$top" && git ls-files -co --exclude-standard -z | tar --null -T - -czf - 2>/dev/null) |
 		ssh ocean "tar -xzf - -C ~/$(printf %q "$remote")"
 }
 
+# Remote check, and with an id the reservation too (creates ~/.ocean/runs/<id>/admitted). Without one,
+# "-" stands in: ssh joins its arguments into one string, so an empty one would vanish and shift the rest.
+# Prints "free|busy|recent <status>" and the number of agents already active.
+admit() {
+	ssh ocean bash -s -- "${1:--}" "$MAX_AGENTS" "$MAX_LOAD_PER_CORE" "$MIN_SLICE_FREE_GB" "$MAX_MEM_PRESSURE" "$SLICE" <<'EOF'
+id=$1 A=$2 L=$3 F=$4 P=$5 slice=$6
+mkdir -p ~/.ocean/runs
+exec 9>~/.ocean/admit.lock
+flock 9
+read -r l1 _ </proc/loadavg
+n=$(nproc)
+psi=$(sed -n 's/^full avg10=[0-9.]* avg60=\([0-9.]*\).*/\1/p' /proc/pressure/memory)
+cur=$(systemctl --user show -P MemoryCurrent "$slice" 2>/dev/null)
+[[ "$cur" =~ ^[0-9]+$ ]] || cur=0
+agents=$(systemctl --user list-units --state=active,activating --no-legend 'ocean-agent-*' | grep -c .)
+recent=$(find ~/.ocean/runs -mindepth 2 -maxdepth 2 -name admitted -mmin -2 | grep -c .)
+status=$(awk -v l="$l1" -v n="$n" -v c="$cur" -v p="$psi" -v a="$agents" -v r="$recent" \
+	-v A="$A" -v L="$L" -v F="$F" -v P="$P" 'BEGIN{
+	free = 16 - c / 2^30
+	s = sprintf("load %s/%d cores, %.1fG free in the slice, mem pressure %s%%, %d agents", l, n, free, p, a)
+	v = (a >= A || l / n >= L || free < F || p >= P) ? "busy" : (r > 0 ? "recent" : "free")
+	print v, s}')
+if [[ "$id" != - && "$status" == free* ]]; then mkdir -p ~/.ocean/runs/"$id" && touch ~/.ocean/runs/"$id"/admitted; fi
+echo "$status"
+echo "$agents"
+EOF
+}
+
 case "${1:-}" in
 	sync) sync ;;
+	load)
+		out=$(admit) || { echo "ocean unreachable"; exit 2; }
+		st=$(head -1 <<<"$out")
+		case "$st" in
+			free*) echo "ocean free: ${st#* }" ;;
+			recent*) echo "ocean busy: ${st#* }, an agent started less than 2 minutes ago"; exit 1 ;;
+			*) echo "ocean busy: ${st#* }"; exit 1 ;;
+		esac
+		;;
 	exec)
 		shift
 		sync
+		ensure_slice
 		jdk=/usr/lib/jvm/java-21-openjdk
 		ssh ocean "cd ~/$(printf %q "$remote/$sub") && export JAVA_HOME=$jdk PATH=$jdk/bin:\$PATH && \
-			systemd-run --user --scope --quiet -p CPUQuota=1280% -p MemoryMax=16G nice -n 10 bash -c $(printf %q "$*")"
+			systemd-run --user --scope --quiet --slice=$SLICE nice -n 10 bash -c $(printf %q "$*")"
 		;;
 	run)
 		shift
 		wait=0
 		[[ "${1:-}" == --wait ]] && { wait=1; shift; }
 		[[ "${1:-}" == - ]] || { echo "ocean-run run: the brief is read from stdin: ocean-run run [--wait] -" >&2; exit 2; }
+		need_repo
 		brief=$(cat)
 		[[ -n "$brief" ]] || { echo "ocean-run run: empty brief" >&2; exit 2; }
-		while ssh ocean 'systemctl --user list-units --state=active --no-legend "ocean-agent-*" | grep -q .'; do
-			echo "queued: another agent is running on ocean (one at a time)" >&2
+		ensure_slice
+		id="$(date +%s)-$RANDOM"
+		start=$SECONDS last=-1000
+		while :; do
+			out=$(admit "$id") || { echo "ocean-run: ocean unreachable" >&2; exit 2; }
+			st=$(head -1 <<<"$out")
+			others=$(tail -1 <<<"$out")
+			[[ "$st" == free* ]] && break
+			((SECONDS - start < QUEUE_MAX)) || { echo "ocean-run: still busy after ${QUEUE_MAX}s: ${st#* }" >&2; exit 1; }
+			if ((SECONDS - last >= 300)); then
+				echo "queued ($((SECONDS - start))s): ${st%% *}: ${st#* }" >&2
+				last=$SECONDS
+			fi
 			sleep 30
 		done
+		echo "ocean: ${st#* }" >&2
+		jobs=8 workers=4
+		((others > 0)) && { jobs=4 workers=2; }
 		sync
-		id="$(date +%s)-$RANDOM"
 		jdk=/usr/lib/jvm/java-21-openjdk
 		cwd="~/$(printf %q "$remote/$sub")"
-		printf '%s%s' "$brief" "$BUDGET" | ssh ocean "set -e; d=~/.ocean/runs/$id; mkdir -p \$d/tmp; cat >\$d/brief; echo $cwd >\$d/dir"
+		# shellcheck disable=SC2059
+		printf '%s'"$BUDGET" "$brief" $((MAX_AGENTS - 1)) "$workers" "$jobs" |
+			ssh ocean "set -e; d=~/.ocean/runs/$id; mkdir -p \$d/tmp; cat >\$d/brief; echo $cwd >\$d/dir"
 		ssh ocean "cd $cwd && d=\$HOME/.ocean/runs/$id && systemd-run --user --quiet --collect --unit=ocean-agent-$id \
-			-p CPUQuota=1280% -p MemoryMax=16G -p Nice=10 --working-directory=\$PWD \
+			--slice=$SLICE -p Nice=10 --working-directory=\$PWD \
 			-E JAVA_HOME=$jdk -E PATH=$jdk/bin:\$HOME/.local/bin:\$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin \
-			-E HOME=\$HOME -E TMPDIR=\$d/tmp -E CARGO_BUILD_JOBS=8 -E RUST_TEST_THREADS=8 \
+			-E HOME=\$HOME -E TMPDIR=\$d/tmp -E CARGO_BUILD_JOBS=$jobs -E RUST_TEST_THREADS=$jobs \
 			bash -c \"\$HOME/.local/bin/aisub run --provider claude --job ocean-agent -- /usr/bin/claude -p --permission-mode bypassPermissions <\$d/brief >\$d/out 2>\$d/err; echo \\\$? >\$d/rc\""
 		echo "$id"
 		((wait)) && exec "$0" wait "$id"
@@ -88,7 +180,7 @@ case "${1:-}" in
 		ssh ocean "d=~/.ocean/runs/$id; test -f \$d/rc || { echo 'ocean-run: run $id is not finished' >&2; exit 3; }; cat \$d/out; rc=\$(cat \$d/rc); [ \$rc = 0 ] || tail -5 \$d/err >&2; exit \$rc"
 		;;
 	ls)
-		ssh ocean 'for d in ~/.ocean/runs/*/; do [ -d "$d" ] || continue; id=$(basename "$d"); if [ -f "$d/rc" ]; then st="exit $(cat "$d/rc")"; elif systemctl --user is-active -q "ocean-agent-$id"; then st=running; else st=died; fi; printf "%s\t%s\t%s\n" "$id" "$st" "$(cat "$d/dir")"; done'
+		ssh ocean 'for d in ~/.ocean/runs/*/; do [ -d "$d" ] || continue; id=$(basename "$d"); [ -f "$d/dir" ] || continue; if [ -f "$d/rc" ]; then st="exit $(cat "$d/rc")"; elif systemctl --user is-active -q "ocean-agent-$id"; then st=running; else st=died; fi; printf "%s\t%s\t%s\n" "$id" "$st" "$(cat "$d/dir")"; done'
 		;;
-	*) sed -n '2,24p' "$0"; exit 2 ;;
+	*) sed -n '2,33p' "$0"; exit 2 ;;
 esac
