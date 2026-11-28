@@ -6,6 +6,9 @@
 set -u
 . "$(dirname "$(readlink -f "$0")")/claude-focus-lib.sh"
 cat >/dev/null   # drain the hook JSON on stdin; we don't need it
+# Headless runs (bin/gitlab-mail-hourly) must not close an interactive session's
+# notification: outside tmux they share the "default" key with it.
+[ "${CLAUDE_NO_NOTIFY:-}" = 1 ] && exit 0
 
 key="${TMUX_PANE:-default}"; key="${key//[^A-Za-z0-9]/_}"
 state="${XDG_RUNTIME_DIR:-/tmp}/claude-notify-${key}.id"

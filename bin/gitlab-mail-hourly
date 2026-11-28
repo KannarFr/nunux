@@ -16,7 +16,7 @@ work="$XDG_RUNTIME_DIR/gitlab-mail"
 mkdir -p "$work"
 cd "$skill" || exit 0
 
-claude -p --model sonnet \
+CLAUDE_NO_NOTIFY=1 claude -p --model sonnet \
 	--allowedTools "Bash(python3 fetch.py:*)" "Bash(python3 mark.py:*)" "Read" \
 	-- "/gitlab-mail
 Run unattended: put threads.json at $work/threads.json, run the scripts from the current directory, apply the rule without asking, and end with the summary (marked count and keep list)." \

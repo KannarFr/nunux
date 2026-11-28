@@ -11,6 +11,10 @@
 # going idle is. The SubagentStop branches below are kept so re-adding the hook to
 # settings.json is the only change needed to bring the ping back.
 
+# Headless runs that nobody watches (bin/gitlab-mail-hourly) set CLAUDE_NO_NOTIFY=1:
+# no notification, no sound. Drain stdin first, as claude-dismiss.sh does.
+[ "${CLAUDE_NO_NOTIFY:-}" = 1 ] && { cat >/dev/null; exit 0; }
+
 # --- read hook JSON from stdin (may be empty); one jq pass, line per field -----
 # Newline-separated (not @tsv): with a tab IFS, read collapses a leading empty
 # field and shifts the rest. The notification shows only the session name, so
